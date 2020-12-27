@@ -68,55 +68,59 @@ void stateChange(){
     case 0: // Main Clock screen
     
       // TODO: display current time GUI
-      terminal.println("Main Clock Screen"); 
       
       if(backChange && !confirmChange){
         nextState = 3; // Set alarm
+        Serial.println(nextState); 
       }
       if(!backChange && confirmChange){
         nextState = 1; // Check messages
+        Serial.println(nextState); 
       }
       break; 
       
     case 1: // Message Overview Screen
       
       // TODO: Show messages GUI
-      terminal.println("Messages Over. Screen"); 
 
       digitalWrite(inbox, LOW); // Messages seen
       led1.off(); 
       
       if(backChange && !confirmChange){
         nextState = 0; // Clock screen
+        Serial.println(nextState);  
       }
       if(!backChange && confirmChange){
         nextState = 2; // Open message
+        Serial.println(nextState); 
       }
       break; 
       
     case 2: // Open Message Screen
 
       // TODO: Open Message GUI
-      terminal.println("Open Mess. Screen"); 
       
       if(backChange && !confirmChange){
         nextState = 1; // Check messages
+        Serial.println(nextState); 
       }
       if(!backChange && confirmChange){
         nextState = 1; // Send response + Check messages
+        Serial.println(nextState); 
       }
       break; 
       
     case 3: // Set Alarm Screen
   
       // TODO: set alarm GUI settings
-      terminal.println("Alarm Screen"); 
       
       if(backChange && !confirmChange){
         nextState = 0; // Clock
+        Serial.println(nextState); 
       }
       if(!backChange && confirmChange){
         nextState = 0; // Confirm settings + clock
+        Serial.println(nextState); 
       }
       break;
       
@@ -125,7 +129,9 @@ void stateChange(){
       // We will default to the clock screen
       break;
   }
-  
+
+  backChange = false; 
+  confirmChange = false; 
   currentState = nextState; 
 }
 
@@ -164,7 +170,7 @@ void setup()
   attachInterrupt(digitalPinToInterrupt(confirm), pressConfirm, FALLING); // State changes when the button is released
 
   timer.setInterval(200L, stateChange); // State Change check function
-  timer.setInterval(1000L, printLocalTime); // Check clock time once per second
+//  timer.setInterval(1000L, printLocalTime); // Check clock time once per second
 
   
   // This will print Blynk Software version to the Terminal Widget when
