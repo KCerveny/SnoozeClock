@@ -18,8 +18,13 @@ const int   daylightOffset_sec = 3600;
 
 // Connectivity Credentials
 char auth[] = "HVMVCQ6T1ie1ER0uix-iNEZelEf7N82z"; // You should get Auth Token in the Blynk App.
-char ssid[] = "ATTcIIbe6a"; // Your WiFi credentials.
+char ssid[] = "ATTcIIbe6a"; // WiFi credentials.
 char pass[] = "ss7aaffspp#m"; // Set password to "" for open networks.
+
+// Messages Table
+WidgetTable table;
+BLYNK_ATTACH_WIDGET(table, V3);
+int tableIndex; // Track position in table
 
 // Virtual Connections/Pins
 WidgetTerminal terminal(V1); // Attach virtual serial terminal to Virtual Pin V1
@@ -31,13 +36,22 @@ short nextState;
 
 // We make these values volatile, as they are used in interrupt context
 volatile bool backChange = false;
-volatile bool confirmChange = false; 
-bool bkCh = false; 
-bool cfCh = false; 
+volatile bool confirmChange = false;
 
 BlynkTimer timer; 
 
 // ************************ HELPER FUNCTIONS ******************************
+
+// Sync device state with server
+BLYNK_CONNECTED(){
+  Blynk.syncVirtual(V5); // Messages table index updated
+  
+}
+
+// Restore index counter from server
+BLYNK_WRITE(V5){
+  tableIndex = param.asInt(); 
+}
 
 void pressBack(){
 //  backValue = digitalRead(back);
@@ -58,6 +72,12 @@ void printLocalTime()
     return;
   }
   terminal.println(&timeinfo, "%A, %B %d %Y %H:%M");
+}
+
+// Updates clock time if minute changes
+void checkTime() {
+
+  // If checked mins != clock mins, update clock GUI
 }
 
 // FSM change based on button presses
@@ -136,15 +156,15 @@ void stateChange(){
 }
 
 // Process message from terminal in Blynk App
-BLYNK_WRITE(V1)
-{
-  digitalWrite(inbox, HIGH); // Turn on the indicator lights
+BLYNK_WRITE(V1){
+  
+  digitalWrite(inbox, HIGH); // Turn on the indicator lights (unread message)
   led1.on(); 
 
-  // Add to the messages buffer (?)
-  // Read back messages in order on BTN1 press
-  // OPTION: if a blynk switch is on, requires response (pizza party?), else, just a message (Love you!)
-  
+  table.addRow(tableIndex, param.asStr(), "No Response"); 
+  tableIndex ++; 
+  Blynk.virtualWrite(V5, tableIndex); 
+    
 }
 
 
@@ -177,7 +197,7 @@ void setup()
   // your hardware gets connected to Blynk Server
   terminal.clear();
   terminal.println(F("Blynk v" BLYNK_VERSION ": Device started"));
-  printLocalTime(); 
+  printLocalTime();
   terminal.println(F("-----------------"));
   terminal.flush();
 }
