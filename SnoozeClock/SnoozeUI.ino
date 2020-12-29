@@ -3,9 +3,6 @@
 #include <Adafruit_ST7789.h> // Hardware-specific library for ST7789
 #include <SPI.h>
 
-
-
-
 void displayUpTime() {
     unsigned long upSeconds = millis() / 1000; // calculate seconds, truncated to the nearest whole second   
     unsigned long days = upSeconds / 86400; // calculate days, truncated to nearest whole day   
@@ -44,6 +41,7 @@ void displayUpTime() {
 
 void clockDisplay(){
   tft.fillScreen(Display_Color_Yellow);
+  tft.setTextColor(Display_Color_Black);
   tft.setCursor(1,1);
   tft.print("Clock Screen: State 0"); 
   tft.setCursor(1,13); 
@@ -52,12 +50,27 @@ void clockDisplay(){
 
 void messagesOverview() {
   tft.fillScreen(Display_Color_Green);
+  tft.setTextColor(Display_Color_Black);
   tft.setCursor(1,1);
-  tft.print("Clock Screen: State 1"); 
+  tft.print("Message View: State 1"); 
 
   // print out all messages
   for(int i = 0; i< tableIndex; i++){
     tft.setCursor(1, 10*(i+1)); 
     tft.print(Messages[i]); 
   }
+}
+
+void openMessageScreen() {
+  tft.fillScreen(Display_Color_Red); 
+  tft.setTextColor(Display_Color_White); 
+  tft.setCursor(1,1);
+  tft.print("Open Msg: State 2"); 
+}
+
+void setAlarmScreen(){
+  tft.fillScreen(Display_Color_Magenta); 
+  tft.setTextColor(Display_Color_White); 
+  tft.setCursor(1,1); 
+  tft.print("Set Alarm: State 3"); 
 }

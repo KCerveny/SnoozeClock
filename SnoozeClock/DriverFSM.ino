@@ -31,6 +31,7 @@ void stateChange(){
       if(!backChange && confirmChange){
         nextState = 2; // Open message
         Serial.println(nextState); 
+        openMessageScreen();
       }
       break; 
       
@@ -41,12 +42,12 @@ void stateChange(){
       if(backChange && !confirmChange){
         nextState = 1; // Check messages
         Serial.println(nextState); 
-        clockDisplay();
+        messagesOverview();
       }
       if(!backChange && confirmChange){
         nextState = 1; // Send response + Check messages
         Serial.println(nextState); 
-        clockDisplay();
+        messagesOverview();
       }
       break; 
       
