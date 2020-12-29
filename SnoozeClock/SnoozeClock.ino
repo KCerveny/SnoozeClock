@@ -2,6 +2,11 @@
 /* Comment this out to disable prints and save space */
 #define BLYNK_PRINT Serial
 
+// GUI Libraries
+#include <Adafruit_GFX.h>    // Core graphics library
+#include <Adafruit_ST7735.h> // Hardware-specific library
+#include <SPI.h>
+
 #include <WiFi.h>
 #include <WiFiClient.h>
 #include <BlynkSimpleEsp32.h>
@@ -10,6 +15,40 @@
 #define inbox 23 // Message received indicator LED
 #define back 22 // Alarm/back button
 #define confirm 21 // Messages/forward/confirm
+
+// DISPLAY  VARIABLES
+
+#define TFT_CS        5
+#define TFT_RST       4 // Or set to -1 and connect to Arduino RESET pin
+#define TFT_DC        2
+
+Adafruit_ST7735 tft = Adafruit_ST7735(TFT_CS, TFT_DC, TFT_RST);
+
+// color definitions
+const uint16_t  Display_Color_Black        = 0x0000;
+const uint16_t  Display_Color_Blue         = 0x001F;
+const uint16_t  Display_Color_Red          = 0xF800;
+const uint16_t  Display_Color_Green        = 0x07E0;
+const uint16_t  Display_Color_Cyan         = 0x07FF;
+const uint16_t  Display_Color_Magenta      = 0xF81F;
+const uint16_t  Display_Color_Yellow       = 0xFFE0;
+const uint16_t  Display_Color_White        = 0xFFFF;
+
+// The colors we actually want to use
+uint16_t        Display_Text_Color         = Display_Color_Black;
+uint16_t        Display_Backround_Color    = Display_Color_Blue;
+
+// assume the display is off until configured in setup()
+bool            isDisplayVisible        = false;
+
+// declare size of working string buffers. Basic strlen("d hh:mm:ss") = 10
+const size_t    MaxString               = 16;
+
+// the string being displayed on the SSD1331 (initially empty)
+char oldTimeString[MaxString]           = { 0 };
+
+// END DISPLAY VARIABLES
+
 
 // UTP Variables
 const char* ntpServer = "pool.ntp.org";
@@ -74,86 +113,6 @@ void printLocalTime()
   terminal.println(&timeinfo, "%A, %B %d %Y %H:%M");
 }
 
-// Updates clock time if minute changes
-void checkTime() {
-
-  // If checked mins != clock mins, update clock GUI
-}
-
-// FSM change based on button presses
-void stateChange(){
-  
-
-  switch(currentState){ 
-    case 0: // Main Clock screen
-    
-      // TODO: display current time GUI
-      
-      if(backChange && !confirmChange){
-        nextState = 3; // Set alarm
-        Serial.println(nextState); 
-      }
-      if(!backChange && confirmChange){
-        nextState = 1; // Check messages
-        Serial.println(nextState); 
-      }
-      break; 
-      
-    case 1: // Message Overview Screen
-      
-      // TODO: Show messages GUI
-
-      digitalWrite(inbox, LOW); // Messages seen
-      led1.off(); 
-      
-      if(backChange && !confirmChange){
-        nextState = 0; // Clock screen
-        Serial.println(nextState);  
-      }
-      if(!backChange && confirmChange){
-        nextState = 2; // Open message
-        Serial.println(nextState); 
-      }
-      break; 
-      
-    case 2: // Open Message Screen
-
-      // TODO: Open Message GUI
-      
-      if(backChange && !confirmChange){
-        nextState = 1; // Check messages
-        Serial.println(nextState); 
-      }
-      if(!backChange && confirmChange){
-        nextState = 1; // Send response + Check messages
-        Serial.println(nextState); 
-      }
-      break; 
-      
-    case 3: // Set Alarm Screen
-  
-      // TODO: set alarm GUI settings
-      
-      if(backChange && !confirmChange){
-        nextState = 0; // Clock
-        Serial.println(nextState); 
-      }
-      if(!backChange && confirmChange){
-        nextState = 0; // Confirm settings + clock
-        Serial.println(nextState); 
-      }
-      break;
-      
-    default: 
-      // TODO
-      // We will default to the clock screen
-      break;
-  }
-
-  backChange = false; 
-  confirmChange = false; 
-  currentState = nextState; 
-}
 
 // Process message from terminal in Blynk App
 BLYNK_WRITE(V1){
@@ -192,6 +151,19 @@ void setup()
   timer.setInterval(200L, stateChange); // State Change check function
 //  timer.setInterval(1000L, printLocalTime); // Check clock time once per second
 
+  /* DISPLAY INITIALIZING */
+  tft.initR(INITR_144GREENTAB); // Init ST7735R chip, green tab
+
+  // initialise the display
+  tft.setFont();
+  tft.fillScreen(Display_Backround_Color);
+  tft.setTextColor(Display_Text_Color);
+  tft.setTextSize(1);
+
+  // the display is now on
+  isDisplayVisible = true;
+
+  displayUpTime();
   
   // This will print Blynk Software version to the Terminal Widget when
   // your hardware gets connected to Blynk Server
@@ -200,6 +172,7 @@ void setup()
   printLocalTime();
   terminal.println(F("-----------------"));
   terminal.flush();
+  
 }
 
 void loop()
