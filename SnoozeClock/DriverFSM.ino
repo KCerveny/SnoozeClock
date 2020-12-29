@@ -1,6 +1,5 @@
 // FSM change based on button presses
 void stateChange(){
-  
   switch(currentState){ 
     case 0: // Main Clock screen
     

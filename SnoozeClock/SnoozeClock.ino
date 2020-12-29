@@ -80,6 +80,7 @@ short nextState;
 // We make these values volatile, as they are used in interrupt context
 volatile bool backChange = false;
 volatile bool confirmChange = false;
+volatile bool interacted = false; 
 
 BlynkTimer timer; 
 
@@ -97,16 +98,26 @@ BLYNK_WRITE(V5){
 }
 
 void pressBack(){
-//  backValue = digitalRead(back);
+  interacted = true;
   backChange = true; // Mark pin value changed
 }
 
 void pressConfirm(){
-//  confirmValue = !digitalRead(confirm);// Invert state, since button is "Active LOW"
+  interacted = true; 
   confirmChange = true; // Mark pin value changed
 }
 
+void noInteract() {
+  // If no interaction in last 10 seconds, return to clock screen
+  if(interacted == false){
+    currentState = 0; // Adjust FSM for UI purposes 
+    clockDisplay();
+  }
+  interacted = false; // If no buttons pushed before next call, we will return
+}
+
 // ISR to update clock time, sync with server
+// Updates display if showing clock screen
 void updateClock() {
 
   // TODO: update clock
@@ -120,7 +131,7 @@ void updateClock() {
     Serial.println("Failed to obtain time");
     return;
   }
-  if (timeinfo.tm_min != minutes){
+  if (timeinfo.tm_min != minutes && currentState == 0){
     minutes = timeinfo.tm_min;
     clockDisplay(); // Update clock display
   }
@@ -175,6 +186,7 @@ void setup()
 
   timer.setInterval(200L, stateChange); // State Change check function
   timer.setInterval(1000L, updateClock); // Check clock time once per second
+  timer.setInterval(10000L, noInteract); // If no interactions for 10 seconds, go back to clock
 
   /* DISPLAY INITIALIZING */
   tft.initR(INITR_144GREENTAB); // Init ST7735R chip, green tab
