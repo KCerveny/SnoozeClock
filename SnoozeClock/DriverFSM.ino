@@ -8,6 +8,7 @@ void stateChange(){
       if(backChange && !confirmChange){
         nextState = 3; // Set alarm
         Serial.println(nextState); 
+        setAlarmScreen(); 
       }
       if(!backChange && confirmChange){
         nextState = 1; // Check messages
@@ -58,10 +59,12 @@ void stateChange(){
       if(backChange && !confirmChange){
         nextState = 0; // Clock
         Serial.println(nextState); 
+        clockDisplay();
       }
       if(!backChange && confirmChange){
-        nextState = 0; // Confirm settings + clock
+        nextState = 0; // Confirm settings + return to clock
         Serial.println(nextState); 
+        clockDisplay(); 
       }
       break;
       

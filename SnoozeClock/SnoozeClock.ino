@@ -49,13 +49,18 @@ char oldTimeString[MaxString]           = { 0 };
 
 // END DISPLAY VARIABLES
 
-
 // UTP Variables
 const char* ntpServer = "pool.ntp.org";
 const long  cstOffset_sec = -21600;
 const int   daylightOffset_sec = 3600;
 struct tm timeinfo; // Holds searched time results
-byte minutes; // Holds current minute value
+byte minutes; // Holds current minute value for clock display
+
+// Alarm Variables
+bool alarmDays[7]; // TODO: may be better as virtual pin for backups
+String dayStrings[7] = {"Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"}; 
+int alarmMin; 
+int alarmHr;  // TODO: may be better vpins as well for backups
 
 // Connectivity Credentials
 char auth[] = "HVMVCQ6T1ie1ER0uix-iNEZelEf7N82z"; // You should get Auth Token in the Blynk App.
@@ -67,7 +72,6 @@ WidgetTable table;
 BLYNK_ATTACH_WIDGET(table, V3);
 int tableIndex; // Track position in table
 String Messages[10]; // Keep Track of all messages sent
-
 
 // Virtual Connections/Pins
 WidgetTerminal terminal(V1); // Attach virtual serial terminal to Virtual Pin V1
@@ -107,6 +111,7 @@ void pressConfirm(){
   confirmChange = true; // Mark pin value changed
 }
 
+// Timer-called ISR: if no interaction since last call, return to Clock display (St. 0)
 void noInteract() {
   // If no interaction in last 10 seconds, return to clock screen
   if(interacted == false){
@@ -125,8 +130,7 @@ void updateClock() {
     else: internal time (?)
 
     if current mins != mins, update display
-  */
-  
+  */ 
   if(!getLocalTime(&timeinfo)){
     Serial.println("Failed to obtain time");
     return;
@@ -137,17 +141,6 @@ void updateClock() {
   }
   
 }
-
-// Accesses and prints CST time from UTP server
-void printLocalTime()
-{
-  if(!getLocalTime(&timeinfo)){
-    Serial.println("Failed to obtain time");
-    return;
-  }
-  terminal.println(&timeinfo, "%A, %B %d %Y %H:%M");
-}
-
 
 // Process message from terminal in Blynk App
 BLYNK_WRITE(V1){
@@ -186,7 +179,8 @@ void setup()
 
   timer.setInterval(200L, stateChange); // State Change check function
   timer.setInterval(1000L, updateClock); // Check clock time once per second
-  timer.setInterval(10000L, noInteract); // If no interactions for 10 seconds, go back to clock
+  timer.setInterval(10000L, noInteract); // If no interactions for 10 seconds, go back to clock (S0)
+  timer.setInterval(20000L, ringAlarm); // Each 20 secs, check if alarm needs to ring
 
   /* DISPLAY INITIALIZING */
   tft.initR(INITR_144GREENTAB); // Init ST7735R chip, green tab
