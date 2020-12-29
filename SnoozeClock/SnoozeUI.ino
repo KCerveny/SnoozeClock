@@ -46,6 +46,18 @@ void clockDisplay(){
   tft.fillScreen(Display_Color_Yellow);
   tft.setCursor(1,1);
   tft.print("Clock Screen: State 0"); 
-  tft.setCursor(2,2); 
-  tft.print("TODO: current time"); 
+  tft.setCursor(1,13); 
+  tft.print(&timeinfo, "%H:%M"); 
+}
+
+void messagesOverview() {
+  tft.fillScreen(Display_Color_Green);
+  tft.setCursor(1,1);
+  tft.print("Clock Screen: State 1"); 
+
+  // print out all messages
+  for(int i = 0; i< tableIndex; i++){
+    tft.setCursor(1, 10*(i+1)); 
+    tft.print(Messages[i]); 
+  }
 }

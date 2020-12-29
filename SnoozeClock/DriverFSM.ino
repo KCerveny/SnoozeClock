@@ -13,7 +13,7 @@ void stateChange(){
       if(!backChange && confirmChange){
         nextState = 1; // Check messages
         Serial.println(nextState); 
-        clockDisplay();
+        messagesOverview();
       }
       break; 
       
@@ -26,7 +26,8 @@ void stateChange(){
       
       if(backChange && !confirmChange){
         nextState = 0; // Clock screen
-        Serial.println(nextState);  
+        Serial.println(nextState);
+        clockDisplay();  
       }
       if(!backChange && confirmChange){
         nextState = 2; // Open message
@@ -73,16 +74,4 @@ void stateChange(){
   backChange = false; 
   confirmChange = false; 
   currentState = nextState; 
-}
-
-// ISR to update clock time, sync with server
-void updateClock() {
-
-  // TODO: update clock
-  /* if connected: get server time
-    else: internal time (?)
-
-    if current mins != mins, update display
-
-  */
 }

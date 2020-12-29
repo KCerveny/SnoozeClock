@@ -54,6 +54,8 @@ char oldTimeString[MaxString]           = { 0 };
 const char* ntpServer = "pool.ntp.org";
 const long  cstOffset_sec = -21600;
 const int   daylightOffset_sec = 3600;
+struct tm timeinfo; // Holds searched time results
+byte minutes; // Holds current minute value
 
 // Connectivity Credentials
 char auth[] = "HVMVCQ6T1ie1ER0uix-iNEZelEf7N82z"; // You should get Auth Token in the Blynk App.
@@ -64,6 +66,8 @@ char pass[] = "ss7aaffspp#m"; // Set password to "" for open networks.
 WidgetTable table;
 BLYNK_ATTACH_WIDGET(table, V3);
 int tableIndex; // Track position in table
+String Messages[10]; // Keep Track of all messages sent
+
 
 // Virtual Connections/Pins
 WidgetTerminal terminal(V1); // Attach virtual serial terminal to Virtual Pin V1
@@ -102,10 +106,30 @@ void pressConfirm(){
   confirmChange = true; // Mark pin value changed
 }
 
+// ISR to update clock time, sync with server
+void updateClock() {
+
+  // TODO: update clock
+  /* if connected: get server time
+    else: internal time (?)
+
+    if current mins != mins, update display
+  */
+  
+  if(!getLocalTime(&timeinfo)){
+    Serial.println("Failed to obtain time");
+    return;
+  }
+  if (timeinfo.tm_min != minutes){
+    minutes = timeinfo.tm_min;
+    clockDisplay(); // Update clock display
+  }
+  
+}
+
 // Accesses and prints CST time from UTP server
 void printLocalTime()
 {
-  struct tm timeinfo;
   if(!getLocalTime(&timeinfo)){
     Serial.println("Failed to obtain time");
     return;
@@ -121,9 +145,10 @@ BLYNK_WRITE(V1){
   led1.on(); 
 
   table.addRow(tableIndex, param.asStr(), "No Response"); 
+  Messages[tableIndex] = param.asStr();
   tableIndex ++; 
   Blynk.virtualWrite(V5, tableIndex); 
-    
+  
 }
 
 
@@ -149,7 +174,7 @@ void setup()
   attachInterrupt(digitalPinToInterrupt(confirm), pressConfirm, FALLING); // State changes when the button is released
 
   timer.setInterval(200L, stateChange); // State Change check function
-//  timer.setInterval(1000L, printLocalTime); // Check clock time once per second
+  timer.setInterval(1000L, updateClock); // Check clock time once per second
 
   /* DISPLAY INITIALIZING */
   tft.initR(INITR_144GREENTAB); // Init ST7735R chip, green tab
@@ -163,13 +188,12 @@ void setup()
   // the display is now on
   isDisplayVisible = true;
 
-  displayUpTime();
+  clockDisplay();
   
   // This will print Blynk Software version to the Terminal Widget when
   // your hardware gets connected to Blynk Server
   terminal.clear();
   terminal.println(F("Blynk v" BLYNK_VERSION ": Device started"));
-  printLocalTime();
   terminal.println(F("-----------------"));
   terminal.flush();
   
