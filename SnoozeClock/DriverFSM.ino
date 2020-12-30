@@ -158,12 +158,12 @@ void stateChange(){
       // TODO: how to select schedules
       
       if(backChange && !confirmChange){
-        nextState = 0; // Back to clock screen
-        clockDisplay(); 
+        nextState = 5; // Back to clock screen
+        setMinutesScreen(); 
       }
       if(!backChange && confirmChange){
-        nextState = 5; // back to set minutes
-        setMinutesScreen(); 
+        nextState = 0; // back to set minutes
+        clockDisplay(); 
       }
       break; 
     

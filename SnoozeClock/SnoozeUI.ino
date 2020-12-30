@@ -45,34 +45,46 @@ void openMessageScreen() {
 // ALARM SCREENS: States 3,4,5,6
 // =============================
 
-// State 3
-void setAlarmScreen(){
+// Helper Function: set alarm screen vars
+// Called to init screen, partial refresh after this
+void alarmScreenInit(){
   tft.fillScreen(Display_Color_White); 
   tft.setTextColor(Display_Color_Black); 
+  
   tft.setCursor(1,1); 
-  tft.print("Set Alarm: State 3"); 
-
-  // Initial display options
+  tft.print("Set Alarm:  ");
+  tft.print(currentState);  
   tft.setCursor(1, 13); 
-  tft.setTextColor(Display_Color_Red); 
   tft.print("on "); 
-  tft.setTextColor(Display_Color_Black);
-  tft.print("6 : 30 weekdays"); 
+  tft.print(alarmHr); tft.print(" : "); tft.print(alarmMin); tft.print("  "); 
+  tft.print("weekdays"); 
   tft.setCursor(1, 23); 
   tft.print("off       all");
+}
+
+// State 3
+void setAlarmScreen(){
+  alarmScreenInit();
+  // Underline? Black box around the outside? Something to indicate what we are setting
+  // If alarmSet == true; on is red
+  // Else, off is red  
 }
 
 // State 4
 void setHoursScreen(){
   
+  alarmScreenInit(); // May not be needed? How does partial refresh work in this context?
+  
 }
 
 // State 5
 void setMinutesScreen(){
+  alarmScreenInit();
   
 }
 
 // State 6
 void setScheduleScreen(){
+  alarmScreenInit();
   
 }
