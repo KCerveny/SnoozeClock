@@ -34,19 +34,6 @@ const uint16_t  Display_Color_Magenta      = 0xF81F;
 const uint16_t  Display_Color_Yellow       = 0xFFE0;
 const uint16_t  Display_Color_White        = 0xFFFF;
 
-// The colors we actually want to use
-uint16_t        Display_Text_Color         = Display_Color_Black;
-uint16_t        Display_Backround_Color    = Display_Color_Blue;
-
-// assume the display is off until configured in setup()
-bool            isDisplayVisible        = false;
-
-// declare size of working string buffers. Basic strlen("d hh:mm:ss") = 10
-const size_t    MaxString               = 16;
-
-// the string being displayed on the SSD1331 (initially empty)
-char oldTimeString[MaxString]           = { 0 };
-
 // END DISPLAY VARIABLES
 
 // UTP Variables
@@ -58,8 +45,8 @@ byte minutes; // Holds current minute value for clock display
 
 // Alarm Variables
 bool alarmDays[7] = {true, true, true, true, true, true, true}; ; // TODO: may be better as virtual pin for backups
-int alarmMin = 39; 
-int alarmHr = 18;  // TODO: may be better vpins as well for backups
+int alarmMin = 25 ; 
+int alarmHr = 19;  // TODO: may be better vpins as well for backups
 int ringMin; // Used to actually ring the alarm 
 int ringHr; 
 bool alarmSet = true; 
@@ -74,18 +61,26 @@ char pass[] = "ss7aaffspp#m"; // Set password to "" for open networks.
 WidgetTable table;
 BLYNK_ATTACH_WIDGET(table, V3);
 int tableIndex; // Track position in table
-String Messages[10]; // Keep Track of all messages sent
+#define MAX_MESSAGES 10
+String messages[MAX_MESSAGES]; // Keep Track of all messages sent
 
-// Virtual Connections/Pins
+/* Virtual Connections/Pins
+ *  V0: 
+ *  V1: Terminal Input
+ *  V2: Notification LED
+ *  V3: Table Write Values
+ *  V5: Table index counter
+ *  V7: Sent messages storage
+ */
 WidgetTerminal terminal(V1); // Attach virtual serial terminal to Virtual Pin V1
 WidgetLED led1(V2); // Notification LED in Blynk app
 
 // FSM Variables
-short currentState; // TODO: This may actually be better as a virtual pin, to sync with Blynk servers!
-short nextState;
+volatile short currentState; // TODO: This may actually be better as a virtual pin, to sync with Blynk servers!
+volatile short nextState;
 
-// We make these values volatile, as they are used in interrupt context
-volatile bool backChange = false;
+// ISR Variables
+volatile bool backChange = false; // We make these values volatile, as they are used in interrupt context
 volatile bool confirmChange = false;
 volatile bool interacted = false; 
 
@@ -95,13 +90,22 @@ BlynkTimer timer;
 
 // Sync device state with server
 BLYNK_CONNECTED(){
-  Blynk.syncVirtual(V5); // Messages table index updated
+  Blynk.syncVirtual(V5,V7); 
   
 }
 
 // Restore index counter from server
 BLYNK_WRITE(V5){
   tableIndex = param.asInt(); 
+  Serial.println(tableIndex); 
+}
+
+BLYNK_WRITE(V7) {
+  Serial.println("Writing to table backup"); 
+  for(int j=0; j<MAX_MESSAGES ; j++){
+    messages[j] = param[j].asStr(); 
+    Serial.println(messages[j]); 
+  } 
 }
 
 void pressBack(){
@@ -119,6 +123,9 @@ void noInteract() {
   // If no interaction in last 10 seconds, return to clock screen
   if(interacted == false && currentState != 0){
     currentState = 0; // Adjust FSM for UI purposes 
+    nextState = 0; 
+    Serial.print("Back to 0: "); 
+    Serial.println(nextState); 
     clockDisplay();
   }
   interacted = false; // If no buttons pushed before next call, we will return
@@ -145,24 +152,10 @@ void updateClock() {
   
 }
 
-// Process message from terminal in Blynk App
-BLYNK_WRITE(V1){
-  
-  digitalWrite(inbox, HIGH); // Turn on the indicator lights (unread message)
-  led1.on(); 
-
-  table.addRow(tableIndex, param.asStr(), "No Response"); 
-  Messages[tableIndex] = param.asStr();
-  tableIndex ++; 
-  Blynk.virtualWrite(V5, tableIndex); 
-  
-}
-
-
 // ************************************* MAIN DRIVER FUNCTIONS **********************************
 
-void setup()
-{
+void setup(){
+  
   Serial.begin(115200);
   Blynk.begin(auth, ssid, pass);
   configTime(cstOffset_sec, daylightOffset_sec, ntpServer); //init and get the time
@@ -188,20 +181,10 @@ void setup()
   timer.setInterval(200L, stateChange); // State Change check function
   timer.setInterval(1000L, updateClock); // Check clock time once per second
   timer.setInterval(10000L, noInteract); // If no interactions for 10 seconds, go back to clock (S0)
-  timer.setInterval(10000L, ringAlarm); // Each 20 secs, check if alarm needs to ring
+  timer.setInterval(20000L, ringAlarm); // Each 20 secs, check if alarm needs to ring
 
   /* DISPLAY INITIALIZING */
   tft.initR(INITR_144GREENTAB); // Init ST7735R chip, green tab
-
-  // initialise the display
-  tft.setFont();
-  tft.fillScreen(Display_Backround_Color);
-  tft.setTextColor(Display_Text_Color);
-  tft.setTextSize(1);
-
-  // the display is now on
-  isDisplayVisible = true;
-
   clockDisplay();
   
   // This will print Blynk Software version to the Terminal Widget when
@@ -210,11 +193,10 @@ void setup()
   terminal.println(F("Blynk v" BLYNK_VERSION ": Device started"));
   terminal.println(F("-----------------"));
   terminal.flush();
-  
 }
 
-void loop()
-{
+void loop(){
+  
   Blynk.run();
   timer.run();
 }

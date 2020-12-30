@@ -1,7 +1,9 @@
 // FSM change based on button presses
 void stateChange(){
+  
   // Button override to turn off alarm
   if(isRinging){
+    
     // back button : snooze for n mins
     if(backChange && !confirmChange){
       isRinging = false; // Turn off alarm until next invoked ring
@@ -18,7 +20,9 @@ void stateChange(){
     backChange = false; 
     confirmChange = false; 
     return; 
+    
   }
+
 
   // Continue to conventional screen change
   switch(currentState){ 
