@@ -3,6 +3,7 @@
 #include <Adafruit_ST7789.h> // Hardware-specific library for ST7789
 #include <SPI.h>
 
+// State 0
 void clockDisplay(){
   tft.fillScreen(Display_Color_Yellow);
   tft.setTextColor(Display_Color_Black);
@@ -16,6 +17,7 @@ void clockDisplay(){
   tft.setTextSize(1);
 }
 
+// State 1
 void messagesOverview() {
 
   // TODO: display message icon if new message, alarm if alarm is set :)
@@ -32,6 +34,7 @@ void messagesOverview() {
   }
 }
 
+// State 2
 void openMessageScreen() {
   tft.fillScreen(Display_Color_Red); 
   tft.setTextColor(Display_Color_White); 
@@ -39,6 +42,10 @@ void openMessageScreen() {
   tft.print("Open Msg: State 2"); 
 }
 
+// ALARM SCREENS: States 3,4,5,6
+// =============================
+
+// State 3
 void setAlarmScreen(){
   tft.fillScreen(Display_Color_White); 
   tft.setTextColor(Display_Color_Black); 
@@ -53,4 +60,19 @@ void setAlarmScreen(){
   tft.print("6 : 30 weekdays"); 
   tft.setCursor(1, 23); 
   tft.print("off       all");
+}
+
+// State 4
+void setHoursScreen(){
+  
+}
+
+// State 5
+void setMinutesScreen(){
+  
+}
+
+// State 6
+void setScheduleScreen(){
+  
 }

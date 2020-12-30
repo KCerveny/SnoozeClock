@@ -76,11 +76,21 @@ void stateChange(){
         messagesOverview();
       }
       break; 
-      
-    case 3: // Set Alarm Screen
-  
-      // TODO: set alarm GUI settings
-//      setAlarm(); 
+
+    // ALARM SETTINGS: States 3,4,5,6
+    case 3: // Alarm Enable Screen
+      // Selection functions
+      /* Enable Alarm
+       * If scrollUp && !scrollDown && !alarmSet: 
+       *  alarmSet = true; // Cursor is over the "on"
+       *  update GUI to reflect that "on" is selected
+       */
+
+       /* Disable Alarm
+        *  If !scrollUp && scrollDown && alarmSet: 
+        *   alarmSet = false; // Cursor is over the "off"
+        *   update GUI to reflect that "off" is selected
+        */
       
       if(backChange && !confirmChange){
         nextState = 0; // Clock
@@ -88,19 +98,84 @@ void stateChange(){
         clockDisplay();
       }
       if(!backChange && confirmChange){
-        nextState = 0; // Confirm settings + return to clock
+        nextState = 4; // Enabled/Disabled, proceed to hour
         Serial.println(nextState); 
-        clockDisplay(); 
+        setHoursScreen(); 
       }
       break;
+
+    case 4: // Hour Set Function
+      // Hour selection functions
+      /* Increment Hour
+       * If scrollUp && !scrollDown: 
+       *  alarmHr += (alarmHr + 1)%24 // Overflow back to midnight
+       *  update GUI to show new hour
+       */
+
+       /* Decrement Hour
+        *  If !scrollUp && scrollDown: 
+        *   alarmHr --; 
+        *   if(alarmHr < 0) alarmHr = 23; // roll around back to 11 pm
+        *   update GUI to show new hour
+        */
+      if(backChange && !confirmChange){
+        nextState = 3; // Return to Enable
+        setAlarmScreen();        
+      }
+      if(!backChange && confirmChange){
+        nextState = 5; // Set minutes next
+        setMinutesScreen(); 
+      }
+      break; 
+
+    case 5: // Minute Set Function
+      // Minute selection functions
+      /* Increment Minute
+       * If scrollUp && !scrollDown: 
+       *  alarmMin += (alarmMin + 1)%60 // Roll over back to xx:00
+       *  update GUI to show new min
+       */
+
+       /* Decrement Minute
+        *  If !scrollUp && scrollDown: 
+        *   alarmMin --; 
+        *   if(alarmMin < 0) alarmMin = 59; // roll around back to xx:59
+        *   update GUI to show new min
+        */
+      if(backChange && !confirmChange){
+        nextState = 4; // back to set hours
+        setHoursScreen(); 
+      }
+      if(!backChange && confirmChange){
+        nextState = 6; // Set schedule next
+        setScheduleScreen(); 
+      }
+      break; 
+
+    case 6: // Alarm Schedule Function
+      // Schedule Select Functions
+
+      // TODO: how to select schedules
       
+      if(backChange && !confirmChange){
+        nextState = 0; // Back to clock screen
+        clockDisplay(); 
+      }
+      if(!backChange && confirmChange){
+        nextState = 5; // back to set minutes
+        setMinutesScreen(); 
+      }
+      break; 
+    
     default: 
       // TODO
       // We will default to the clock screen
       break;
   }
 
+  // TODO: scrollUp, scrollDown = false, have been handled in state
   backChange = false; 
   confirmChange = false; 
+  
   currentState = nextState; 
 }

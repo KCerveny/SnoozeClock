@@ -45,11 +45,11 @@ byte minutes; // Holds current minute value for clock display
 
 // Alarm Variables
 bool alarmDays[7] = {true, true, true, true, true, true, true}; ; // TODO: may be better as virtual pin for backups
-int alarmMin = 25 ; 
 int alarmHr = 19;  // TODO: may be better vpins as well for backups
-int ringMin; // Used to actually ring the alarm 
-int ringHr; 
+int alarmMin = 25 ; 
 bool alarmSet = true; 
+int ringMin; // Used to actually ring the alarm, in case snoozed
+int ringHr; 
 volatile bool isRinging; // FSM button override
 
 // Connectivity Credentials
@@ -91,7 +91,6 @@ BlynkTimer timer;
 // Sync device state with server
 BLYNK_CONNECTED(){
   Blynk.syncVirtual(V5,V7); 
-  
 }
 
 // Restore index counter from server
@@ -100,6 +99,7 @@ BLYNK_WRITE(V5){
   Serial.println(tableIndex); 
 }
 
+// Restore last 10 messages from Blynk server
 BLYNK_WRITE(V7) {
   Serial.println("Writing to table backup"); 
   for(int j=0; j<MAX_MESSAGES ; j++){
@@ -116,6 +116,10 @@ void pressBack(){
 void pressConfirm(){
   interacted = true; 
   confirmChange = true; // Mark pin value changed
+}
+
+void scrollWheel(){
+  // TODO: catch scroll wheel state, determine wether we are going "up" or "down"
 }
 
 // Timer-called ISR: if no interaction since last call, return to Clock display (St. 0)

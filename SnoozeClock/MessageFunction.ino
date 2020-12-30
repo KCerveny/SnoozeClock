@@ -43,6 +43,7 @@ void addMessage(String newOne) {
 // Notify blynk app, update table value 
 void messageRespond(){
 
+  // TODO: send response, log in archive table, send push notification, disable further response (?)
   // Hoooo boy that can't be easy to do
   
 }
