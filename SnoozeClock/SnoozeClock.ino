@@ -57,10 +57,13 @@ struct tm timeinfo; // Holds searched time results
 byte minutes; // Holds current minute value for clock display
 
 // Alarm Variables
-bool alarmDays[7]; // TODO: may be better as virtual pin for backups
-String dayStrings[7] = {"Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"}; 
-int alarmMin; 
-int alarmHr;  // TODO: may be better vpins as well for backups
+bool alarmDays[7] = {true, true, true, true, true, true, true}; ; // TODO: may be better as virtual pin for backups
+int alarmMin = 39; 
+int alarmHr = 18;  // TODO: may be better vpins as well for backups
+int ringMin; // Used to actually ring the alarm 
+int ringHr; 
+bool alarmSet = true; 
+volatile bool isRinging; // FSM button override
 
 // Connectivity Credentials
 char auth[] = "HVMVCQ6T1ie1ER0uix-iNEZelEf7N82z"; // You should get Auth Token in the Blynk App.
@@ -114,7 +117,7 @@ void pressConfirm(){
 // Timer-called ISR: if no interaction since last call, return to Clock display (St. 0)
 void noInteract() {
   // If no interaction in last 10 seconds, return to clock screen
-  if(interacted == false){
+  if(interacted == false && currentState != 0){
     currentState = 0; // Adjust FSM for UI purposes 
     clockDisplay();
   }
@@ -169,7 +172,12 @@ void setup()
   led1.off();
   pinMode(back, INPUT); 
   pinMode(confirm, INPUT); 
-
+  
+  pinMode(12, OUTPUT); // TESTING LED for alarm function
+  digitalWrite(12, LOW); 
+  ringMin = alarmMin; // Set alarm to ring next at user-set time
+  ringHr = alarmHr;
+  
   currentState = 0; 
   nextState = 0; 
 
@@ -180,7 +188,7 @@ void setup()
   timer.setInterval(200L, stateChange); // State Change check function
   timer.setInterval(1000L, updateClock); // Check clock time once per second
   timer.setInterval(10000L, noInteract); // If no interactions for 10 seconds, go back to clock (S0)
-  timer.setInterval(20000L, ringAlarm); // Each 20 secs, check if alarm needs to ring
+  timer.setInterval(10000L, ringAlarm); // Each 20 secs, check if alarm needs to ring
 
   /* DISPLAY INITIALIZING */
   tft.initR(INITR_144GREENTAB); // Init ST7735R chip, green tab

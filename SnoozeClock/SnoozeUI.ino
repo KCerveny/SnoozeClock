@@ -44,8 +44,12 @@ void clockDisplay(){
   tft.setTextColor(Display_Color_Black);
   tft.setCursor(1,1);
   tft.print("Clock Screen: State 0"); 
-  tft.setCursor(1,13); 
-  tft.print(&timeinfo, "%H:%M"); 
+  tft.setCursor(1,13);
+  tft.print(&timeinfo, "%A, %B %d"); 
+  tft.setCursor(1, 27); 
+  tft.setTextSize(3);
+  tft.print(&timeinfo, " %H:%M"); 
+  tft.setTextSize(1);
 }
 
 void messagesOverview() {
@@ -69,8 +73,17 @@ void openMessageScreen() {
 }
 
 void setAlarmScreen(){
-  tft.fillScreen(Display_Color_Magenta); 
-  tft.setTextColor(Display_Color_White); 
+  tft.fillScreen(Display_Color_White); 
+  tft.setTextColor(Display_Color_Black); 
   tft.setCursor(1,1); 
   tft.print("Set Alarm: State 3"); 
+
+  // Initial display options
+  tft.setCursor(1, 13); 
+  tft.setTextColor(Display_Color_Red); 
+  tft.print("on "); 
+  tft.setTextColor(Display_Color_Black);
+  tft.print("6 : 30 weekdays"); 
+  tft.setCursor(1, 23); 
+  tft.print("off       all");
 }
