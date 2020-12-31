@@ -45,8 +45,8 @@ byte minutes; // Holds current minute value for clock display
 
 // Alarm Variables
 bool alarmDays[7] = {true, true, true, true, true, true, true}; ; // TODO: may be better as virtual pin for backups
-int alarmHr = 19;  // TODO: may be better vpins as well for backups
-int alarmMin = 25 ; 
+int alarmHr = 18;  // Hr and Min saved to servers on V6
+int alarmMin = 55 ; 
 bool alarmSet = true; 
 int ringMin; // Used to actually ring the alarm, in case snoozed
 int ringHr; 
@@ -70,6 +70,7 @@ String messages[MAX_MESSAGES]; // Keep Track of all messages sent
  *  V2: Notification LED
  *  V3: Table Write Values
  *  V5: Table index counter
+ *  V6: {AlarmHr, AlarmMin}
  *  V7: Sent messages storage
  */
 WidgetTerminal terminal(V1); // Attach virtual serial terminal to Virtual Pin V1
@@ -90,13 +91,19 @@ BlynkTimer timer;
 
 // Sync device state with server
 BLYNK_CONNECTED(){
-  Blynk.syncVirtual(V5,V7); 
+  Blynk.syncVirtual(V5,V6,V7); 
 }
 
 // Restore index counter from server
 BLYNK_WRITE(V5){
   tableIndex = param.asInt(); 
   Serial.println(tableIndex); 
+}
+
+// Restore alarm clock settings
+BLYNK_WRITE(V6){
+  alarmHr = param[0].toInt(); 
+  alarmMin = param[1].toInt(); 
 }
 
 // Restore last 10 messages from Blynk server
@@ -197,6 +204,7 @@ void setup(){
   terminal.println(F("Blynk v" BLYNK_VERSION ": Device started"));
   terminal.println(F("-----------------"));
   terminal.flush();
+
 }
 
 void loop(){

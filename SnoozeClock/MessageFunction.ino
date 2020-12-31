@@ -27,12 +27,11 @@ void addMessage(String newOne) {
   String newMessage = newOne; 
   String oldMessage; 
 
-  Serial.println("Rearranging..."); 
+  // Push new message to top of messages array
   for(int i=0; i < MAX_MESSAGES-1 ; i++){
     oldMessage = messages[i]; 
     messages[i] = newMessage; 
-    newMessage = oldMessage; 
-    Serial.println(messages[i]); 
+    newMessage = oldMessage;  
   }
 
   // Store new messages structure to the Blynk server

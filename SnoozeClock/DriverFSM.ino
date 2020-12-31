@@ -163,6 +163,7 @@ void stateChange(){
       }
       if(!backChange && confirmChange){
         nextState = 0; // back to set minutes
+        Blynk.virtualWrite(V6, alarmHr, alarmMin); // Save values to the blynk Server 
         clockDisplay(); 
       }
       break; 
