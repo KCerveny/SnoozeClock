@@ -7,13 +7,7 @@ BLYNK_WRITE(V1){
   led1.on(); 
 
   // TODO: Send new message notification if on Clock screen (S0)
-
-  table.addRow(tableIndex, param.asStr(), "N/A"); // No response yet
   addMessage(param.asStr()); // Add message to messages array
-  Serial.print("Current index: "); 
-  Serial.println(tableIndex); 
-  tableIndex ++; 
-  Blynk.virtualWrite(V5, tableIndex); // Save new index to the server
 
   // Auto-refresh if on messages page
   if(currentState == 1){
@@ -24,11 +18,11 @@ BLYNK_WRITE(V1){
 // push new message to the front of the array
 // shift back rest of array, losing oldest message
 void addMessage(String newOne) {
-  String newMessage = newOne; 
+  String newMessage = newOne;  
   String oldMessage; 
 
-  // Push new message to top of messages array
   for(int i=0; i < MAX_MESSAGES-1 ; i++){
+    // Push new message to top of messages array
     oldMessage = messages[i]; 
     messages[i] = newMessage; 
     newMessage = oldMessage;  

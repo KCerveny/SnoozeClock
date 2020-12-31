@@ -12,7 +12,6 @@
 #include <BlynkSimpleEsp32.h>
 #include "time.h"
 
-#define inbox 23 // Message received indicator LED
 #define back 22 // Alarm/back button
 #define confirm 21 // Messages/forward/confirm
 
@@ -57,10 +56,8 @@ char auth[] = "HVMVCQ6T1ie1ER0uix-iNEZelEf7N82z"; // You should get Auth Token i
 char ssid[] = "ATTcIIbe6a"; // WiFi credentials.
 char pass[] = "ss7aaffspp#m"; // Set password to "" for open networks.
 
-// Messages Table
-WidgetTable table;
-BLYNK_ATTACH_WIDGET(table, V3);
-int tableIndex; // Track position in table
+// Messages Variables
+#define inbox 23 // Message received indicator LED
 #define MAX_MESSAGES 10
 String messages[MAX_MESSAGES]; // Keep Track of all messages sent
 
@@ -68,8 +65,8 @@ String messages[MAX_MESSAGES]; // Keep Track of all messages sent
  *  V0: 
  *  V1: Terminal Input
  *  V2: Notification LED
- *  V3: Table Write Values
- *  V5: Table index counter
+ *  V3: 
+ *  V5: 
  *  V6: {AlarmHr, AlarmMin}
  *  V7: Sent messages storage
  */
@@ -91,24 +88,18 @@ BlynkTimer timer;
 
 // Sync device state with server
 BLYNK_CONNECTED(){
-  Blynk.syncVirtual(V5,V6,V7); 
-}
-
-// Restore index counter from server
-BLYNK_WRITE(V5){
-  tableIndex = param.asInt(); 
-  Serial.println(tableIndex); 
+  Blynk.syncVirtual(V6,V7); 
 }
 
 // Restore alarm clock settings
 BLYNK_WRITE(V6){
-  alarmHr = param[0].toInt(); 
-  alarmMin = param[1].toInt(); 
+  alarmHr = param[0].asInt(); 
+  alarmMin = param[1].asInt(); 
 }
 
 // Restore last 10 messages from Blynk server
 BLYNK_WRITE(V7) {
-  Serial.println("Writing to table backup"); 
+  Serial.println("Writing to messages backup"); 
   for(int j=0; j<MAX_MESSAGES ; j++){
     messages[j] = param[j].asStr(); 
     Serial.println(messages[j]); 
@@ -203,6 +194,11 @@ void setup(){
   terminal.clear();
   terminal.println(F("Blynk v" BLYNK_VERSION ": Device started"));
   terminal.println(F("-----------------"));
+  terminal.println(F("Previous Messages: "));
+  for(int b=0; b<MAX_MESSAGES; b++){
+    terminal.println(messages[b]);  
+  }
+  terminal.println(F("-----------------")); 
   terminal.flush();
 
 }
