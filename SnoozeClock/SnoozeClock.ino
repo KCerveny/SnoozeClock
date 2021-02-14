@@ -16,23 +16,14 @@
 #define confirm 21 // Messages/forward/confirm
 
 // DISPLAY  VARIABLES
+#include <GxEPD.h>
+#include <GxGDEW029Z10/GxGDEW029Z10.h>    // 2.9" b/w/r
+#include GxEPD_BitmapExamples // Might not be needed
+#include <GxIO/GxIO_SPI/GxIO_SPI.h>
+#include <GxIO/GxIO.h>
 
-#define TFT_CS        5
-#define TFT_RST       4 // Or set to -1 and connect to Arduino RESET pin
-#define TFT_DC        2
-
-Adafruit_ST7735 tft = Adafruit_ST7735(TFT_CS, TFT_DC, TFT_RST);
-
-// color definitions
-const uint16_t  Display_Color_Black        = 0x0000;
-const uint16_t  Display_Color_Blue         = 0x001F;
-const uint16_t  Display_Color_Red          = 0xF800;
-const uint16_t  Display_Color_Green        = 0x07E0;
-const uint16_t  Display_Color_Cyan         = 0x07FF;
-const uint16_t  Display_Color_Magenta      = 0xF81F;
-const uint16_t  Display_Color_Yellow       = 0xFFE0;
-const uint16_t  Display_Color_White        = 0xFFFF;
-
+GxIO_Class io(SPI, /*CS=5*/ SS, /*DC=*/ 17, /*RST=*/ 16); // arbitrary selection of 17, 16
+GxEPD_Class display(io, /*RST=*/ 16, /*BUSY=*/ 4); // arbitrary selection of (16), 4
 // END DISPLAY VARIABLES
 
 // UTP Variables
@@ -45,16 +36,16 @@ byte minutes; // Holds current minute value for clock display
 // Alarm Variables
 bool alarmDays[7] = {true, true, true, true, true, true, true}; ; // TODO: may be better as virtual pin for backups
 int alarmHr = 18;  // Hr and Min saved to servers on V6
-int alarmMin = 55 ; 
-bool alarmSet = true; 
+int alarmMin = 55 ;
+bool alarmSet = true;
 int ringMin; // Used to actually ring the alarm, in case snoozed
-int ringHr; 
+int ringHr;
 volatile bool isRinging; // FSM button override
 
 // Connectivity Credentials
 char auth[] = "HVMVCQ6T1ie1ER0uix-iNEZelEf7N82z"; // You should get Auth Token in the Blynk App.
-char ssid[] = "ATTcIIbe6a"; // WiFi credentials.
-char pass[] = "ss7aaffspp#m"; // Set password to "" for open networks.
+char ssid[] = "SpicySchemeTeam"; // WiFi credentials.
+char pass[] = "spicybrainthot"; // Set password to "" for open networks.
 
 // Messages Variables
 #define inbox 23 // Message received indicator LED
@@ -62,14 +53,14 @@ char pass[] = "ss7aaffspp#m"; // Set password to "" for open networks.
 String messages[MAX_MESSAGES]; // Keep Track of all messages sent
 
 /* Virtual Connections/Pins
- *  V0: 
- *  V1: Terminal Input
- *  V2: Notification LED
- *  V3: 
- *  V5: 
- *  V6: {AlarmHr, AlarmMin}
- *  V7: Sent messages storage
- */
+    V0:
+    V1: Terminal Input
+    V2: Notification LED
+    V3:
+    V5:
+    V6: {AlarmHr, AlarmMin}
+    V7: Sent messages storage
+*/
 WidgetTerminal terminal(V1); // Attach virtual serial terminal to Virtual Pin V1
 WidgetLED led1(V2); // Notification LED in Blynk app
 
@@ -80,54 +71,54 @@ volatile short nextState;
 // ISR Variables
 volatile bool backChange = false; // We make these values volatile, as they are used in interrupt context
 volatile bool confirmChange = false;
-volatile bool interacted = false; 
+volatile bool interacted = false;
 
-BlynkTimer timer; 
+BlynkTimer timer;
 
 // ************************ HELPER FUNCTIONS ******************************
 
 // Sync device state with server
-BLYNK_CONNECTED(){
-  Blynk.syncVirtual(V6,V7); 
+BLYNK_CONNECTED() {
+  Blynk.syncVirtual(V6, V7);
 }
 
 // Restore alarm clock settings
-BLYNK_WRITE(V6){
-  alarmHr = param[0].asInt(); 
-  alarmMin = param[1].asInt(); 
+BLYNK_WRITE(V6) {
+  alarmHr = param[0].asInt();
+  alarmMin = param[1].asInt();
 }
 
 // Restore last 10 messages from Blynk server
 BLYNK_WRITE(V7) {
-  Serial.println("Writing to messages backup"); 
-  for(int j=0; j<MAX_MESSAGES ; j++){
-    messages[j] = param[j].asStr(); 
-    Serial.println(messages[j]); 
-  } 
+  Serial.println("Writing to messages backup");
+  for (int j = 0; j < MAX_MESSAGES ; j++) {
+    messages[j] = param[j].asStr();
+    Serial.println(messages[j]);
+  }
 }
 
-void pressBack(){
+void pressBack() {
   interacted = true;
   backChange = true; // Mark pin value changed
 }
 
-void pressConfirm(){
-  interacted = true; 
+void pressConfirm() {
+  interacted = true;
   confirmChange = true; // Mark pin value changed
 }
 
-void scrollWheel(){
+void scrollWheel() {
   // TODO: catch scroll wheel state, determine wether we are going "up" or "down"
 }
 
 // Timer-called ISR: if no interaction since last call, return to Clock display (St. 0)
 void noInteract() {
   // If no interaction in last 10 seconds, return to clock screen
-  if(interacted == false && currentState != 0){
-    currentState = 0; // Adjust FSM for UI purposes 
-    nextState = 0; 
-    Serial.print("Back to 0: "); 
-    Serial.println(nextState); 
+  if (interacted == false && currentState != 0) {
+    currentState = 0; // Adjust FSM for UI purposes
+    nextState = 0;
+    Serial.print("Back to 0: ");
+    Serial.println(nextState);
     clockDisplay();
   }
   interacted = false; // If no buttons pushed before next call, we will return
@@ -142,39 +133,39 @@ void updateClock() {
     else: internal time (?)
 
     if current mins != mins, update display
-  */ 
-  if(!getLocalTime(&timeinfo)){
+  */
+  if (!getLocalTime(&timeinfo)) {
     Serial.println("Failed to obtain time");
     return;
   }
-  if (timeinfo.tm_min != minutes && currentState == 0){
+  if (timeinfo.tm_min != minutes && currentState == 0) {
     minutes = timeinfo.tm_min;
     clockDisplay(); // Update clock display
   }
-  
+
 }
 
 // ************************************* MAIN DRIVER FUNCTIONS **********************************
 
-void setup(){
-  
+void setup() {
+
   Serial.begin(115200);
   Blynk.begin(auth, ssid, pass);
   configTime(cstOffset_sec, daylightOffset_sec, ntpServer); //init and get the time
-  
+
   pinMode(inbox, OUTPUT); // Notification light
-  digitalWrite(inbox, LOW); 
+  digitalWrite(inbox, LOW);
   led1.off();
-  pinMode(back, INPUT); 
-  pinMode(confirm, INPUT); 
-  
+  pinMode(back, INPUT);
+  pinMode(confirm, INPUT);
+
   pinMode(12, OUTPUT); // TESTING LED for alarm function
-  digitalWrite(12, LOW); 
+  digitalWrite(12, LOW);
   ringMin = alarmMin; // Set alarm to ring next at user-set time
   ringHr = alarmHr;
-  
-  currentState = 0; 
-  nextState = 0; 
+
+  currentState = 0;
+  nextState = 0;
 
   // Attach back/confirm button interrupts to our handler
   attachInterrupt(digitalPinToInterrupt(back), pressBack, FALLING); // TODO: add interrupt service routine for button presses
@@ -186,25 +177,25 @@ void setup(){
   timer.setInterval(20000L, ringAlarm); // Each 20 secs, check if alarm needs to ring
 
   /* DISPLAY INITIALIZING */
-  tft.initR(INITR_144GREENTAB); // Init ST7735R chip, green tab
+  display.init(115200); // enable diagnostic output on Serial
+  display.setRotation(1);
   clockDisplay();
-  
+
   // This will print Blynk Software version to the Terminal Widget when
   // your hardware gets connected to Blynk Server
   terminal.clear();
   terminal.println(F("Blynk v" BLYNK_VERSION ": Device started"));
   terminal.println(F("-----------------"));
   terminal.println(F("Previous Messages: "));
-  for(int b=0; b<MAX_MESSAGES; b++){
-    terminal.println(messages[b]);  
+  for (int b = 0; b < MAX_MESSAGES; b++) {
+    terminal.println(messages[b]);
   }
-  terminal.println(F("-----------------")); 
+  terminal.println(F("-----------------"));
   terminal.flush();
 
 }
 
-void loop(){
-  
+void loop() {
   Blynk.run();
   timer.run();
 }
