@@ -17,7 +17,7 @@
 
 // DISPLAY  VARIABLES
 #include <GxEPD.h>
-#include <GxGDEW029Z10/GxGDEW029Z10.h>    // 2.9" b/w/r
+#include <GxGDEW029Z10/GxGDEW029Z10.h> // 2.9" b/w/r
 #include GxEPD_BitmapExamples // Might not be needed
 #include <GxIO/GxIO_SPI/GxIO_SPI.h>
 #include <GxIO/GxIO.h>
@@ -34,10 +34,10 @@ struct tm timeinfo; // Holds searched time results
 byte minutes; // Holds current minute value for clock display
 
 // Alarm Variables
-bool alarmDays[7] = {true, true, true, true, true, true, true}; ; // TODO: may be better as virtual pin for backups
-int alarmHr = 18;  // Hr and Min saved to servers on V6
+bool alarmDays[7] = {1, 1, 1, 1, 1, 1, 1}; // Index represents days since Sunday
+int alarmHr = 12;  // Hr and Min saved to servers on V6
 int alarmMin = 55 ;
-bool alarmSet = true;
+bool alarmSet = 1; // 1=true, 0=false
 int ringMin; // Used to actually ring the alarm, in case snoozed
 int ringHr;
 volatile bool isRinging; // FSM button override
@@ -58,7 +58,7 @@ String messages[MAX_MESSAGES]; // Keep Track of all messages sent
     V2: Notification LED
     V3:
     V5:
-    V6: {AlarmHr, AlarmMin}
+    V6: {AlarmHr, AlarmMin, alarmDays[0:6], alarmSet}
     V7: Sent messages storage
 */
 WidgetTerminal terminal(V1); // Attach virtual serial terminal to Virtual Pin V1
@@ -86,6 +86,11 @@ BLYNK_CONNECTED() {
 BLYNK_WRITE(V6) {
   alarmHr = param[0].asInt();
   alarmMin = param[1].asInt();
+  // Backup alarm day settings
+  for(int i=0; i<7; i++){
+    alarmDays[i] = param[i+2].asInt();
+  }
+  alarmSet = param[9].asInt();
 }
 
 // Restore last 10 messages from Blynk server
@@ -140,7 +145,8 @@ void updateClock() {
   }
   if (timeinfo.tm_min != minutes && currentState == 0) {
     minutes = timeinfo.tm_min;
-    clockDisplay(); // Update clock display
+//    clockDisplay(); // Update clock display
+    setAlarmScreen(); // DEBUGGING ONLY
   }
 
 }
@@ -152,6 +158,7 @@ void setup() {
   Serial.begin(115200);
   Blynk.begin(auth, ssid, pass);
   configTime(cstOffset_sec, daylightOffset_sec, ntpServer); //init and get the time
+  getLocalTime(&timeinfo); 
 
   pinMode(inbox, OUTPUT); // Notification light
   digitalWrite(inbox, LOW);
@@ -180,6 +187,7 @@ void setup() {
   display.init(115200); // enable diagnostic output on Serial
   display.setRotation(1);
   clockDisplay();
+  delay(2000);
 
   // This will print Blynk Software version to the Terminal Widget when
   // your hardware gets connected to Blynk Server

@@ -20,7 +20,6 @@ void stateChange(){
     backChange = false; 
     confirmChange = false; 
     return; 
-    
   }
 
 
