@@ -42,7 +42,8 @@ byte minutes; // Holds current minute value for clock display
 String openWeatherMapApiKey = "4428b3a249626b07f1a2769374ecf1ce";
 String cityID = "4671654"; // Austin
 String units = "imperial";
-String jsonBuffer; 
+String jsonBuffer; // Used to parse response
+String temp = "--";
 
 // Alarm Variables
 bool alarmDays[7] = {1, 1, 1, 1, 1, 1, 1}; // Index represents days since Sunday
@@ -195,9 +196,10 @@ void updateClock() {
 // ISR: OpenWeather HTTP request
 // Sends HTTP request, parses JSON, stores relevant weather info
 void getWeather(){
-  String serverPath = "api.openweathermap.org/data/2.5/weather?id="+cityID+"&appid="+openWeatherMapApiKey+"&units="+units;
+  String serverPath = "http://api.openweathermap.org/data/2.5/weather?id=" + cityID + "&appid=" + openWeatherMapApiKey+"&units="+units;
   jsonBuffer = httpGETRequest(serverPath.c_str());
   Serial.println(jsonBuffer);
+  
   JSONVar myObject = JSON.parse(jsonBuffer);
   
   // JSON.typeof(jsonVar) can be used to get the type of the var
@@ -217,6 +219,8 @@ void getWeather(){
   Serial.println(myObject["wind"]["speed"]);
 
   // TODO: store relevant info in globals
+  temp = JSON.stringify(myObject["main"]["temp"]);
+  Serial.println("Temp: " + temp); 
 }
 
 // ************************************* MAIN DRIVER FUNCTIONS **********************************

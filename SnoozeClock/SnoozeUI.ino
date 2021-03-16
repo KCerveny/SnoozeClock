@@ -26,7 +26,7 @@ void clockDisplay() {
   Serial.println(display.getCursorY());
   
   // Display weather
-  display.print("30*"); 
+  display.print(temp+"*F"); 
   // TODO: include correct weather icon, get weather data from API call
 
   // Display the current time
