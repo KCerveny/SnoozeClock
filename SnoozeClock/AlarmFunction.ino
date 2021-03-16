@@ -14,7 +14,7 @@ void ringAlarm(){
 // Snooze button was hit when the alarm rang; change time to next alarm
 // Snooze time is ~8 mins per snooze button hit
 void addTime(){
-  int timeAdded = 8; 
+  int timeAdded = 8;
   ringHr = ringHr +( (timeinfo.tm_min + timeAdded) / 60); // Add 1 to hr if mins pushes over 60
   ringHr = (ringHr % 24); // Roll over if illegal hour value
   ringMin = (timeinfo.tm_min + timeAdded) % 60; 

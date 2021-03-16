@@ -7,13 +7,18 @@
 #include <Adafruit_ST7735.h> // Hardware-specific library
 #include <SPI.h>
 
+#include <HTTPClient.h>
 #include <WiFi.h>
 #include <WiFiClient.h>
+
+#include <Arduino_JSON.h>
 #include <BlynkSimpleEsp32.h>
 #include "time.h"
 
 #define back 22 // Alarm/back button
 #define confirm 21 // Messages/forward/confirm
+#define rot1 32 // Rotary dial pin
+#define rot2 33
 
 // DISPLAY  VARIABLES
 #include <GxEPD.h>
@@ -33,10 +38,16 @@ const int   daylightOffset_sec = 3600;
 struct tm timeinfo; // Holds searched time results
 byte minutes; // Holds current minute value for clock display
 
+// OpenWeather Variables
+String openWeatherMapApiKey = "4428b3a249626b07f1a2769374ecf1ce";
+String cityID = "4671654"; // Austin
+String units = "imperial";
+String jsonBuffer; 
+
 // Alarm Variables
 bool alarmDays[7] = {1, 1, 1, 1, 1, 1, 1}; // Index represents days since Sunday
-int alarmHr = 12;  // Hr and Min saved to servers on V6
-int alarmMin = 55 ;
+int alarmHr = 7;  // Hr and Min saved to servers on V6
+int alarmMin = 30;
 bool alarmSet = 1; // 1=true, 0=false
 int ringMin; // Used to actually ring the alarm, in case snoozed
 int ringHr;
@@ -44,8 +55,8 @@ volatile bool isRinging; // FSM button override
 
 // Connectivity Credentials
 char auth[] = "HVMVCQ6T1ie1ER0uix-iNEZelEf7N82z"; // You should get Auth Token in the Blynk App.
-char ssid[] = "SpicySchemeTeam"; // WiFi credentials.
-char pass[] = "spicybrainthot"; // Set password to "" for open networks.
+char ssid[] = "ATTcIIbe6a"; // WiFi credentials.
+char pass[] = "ss7aaffspp#m"; // Set password to "" for open networks.
 
 // Messages Variables
 #define inbox 23 // Message received indicator LED
@@ -72,6 +83,8 @@ volatile short nextState;
 volatile bool backChange = false; // We make these values volatile, as they are used in interrupt context
 volatile bool confirmChange = false;
 volatile bool interacted = false;
+volatile int rotState; // State:(rot1,rot2) {0:00},{1:01},{2:10},{3:11}
+volatile int scrollChange = 0; // Zero is no scroll, negative scroll up/back, positive scroll down/forward 
 
 BlynkTimer timer;
 
@@ -107,13 +120,43 @@ void pressBack() {
   backChange = true; // Mark pin value changed
 }
 
+// Confirm switch is connected to rotary encoder
 void pressConfirm() {
   interacted = true;
   confirmChange = true; // Mark pin value changed
 }
 
 void scrollWheel() {
-  // TODO: catch scroll wheel state, determine wether we are going "up" or "down"
+  // Read the current state
+  int newState;
+  int rotary1 = digitalRead(rot1) ? 1 : 0; // If HIGH, make 1, else 0
+  int rotary2 = digitalRead(rot2) ? 1 : 0;
+  newState = 2*rotary1 + rotary2; // Will yield 4 distinct states
+
+  // TODO: need to determine order of states scrolling CC vs CCW
+  switch(rotState){
+    case 0: // Can go to 2 or 1
+      scrollChange += ((newState == 2) ? 1 : -1);
+      break; 
+    
+    case 1: // Can go to 0 or 3
+      scrollChange += ((newState == 0) ? 1 : -1);
+      break; 
+    
+    case 2: // Can go to 3 or 0
+      scrollChange += ((newState == 3) ? 1 : -1);
+      break;
+      
+    case 3: // Can go to 1 or 2
+      scrollChange += ((newState == 1) ? 1 : -1); 
+      break;
+      
+    default: 
+      rotState = newState; // If we get here, rotState was not initialized. Ammend.
+      break;
+  }
+  
+  rotState = newState; // scrollChange has been adjusted, state updates  
 }
 
 // Timer-called ISR: if no interaction since last call, return to Clock display (St. 0)
@@ -145,10 +188,35 @@ void updateClock() {
   }
   if (timeinfo.tm_min != minutes && currentState == 0) {
     minutes = timeinfo.tm_min;
-//    clockDisplay(); // Update clock display
-    setAlarmScreen(); // DEBUGGING ONLY
+    clockDisplay(); // Update clock display
   }
+}
 
+// ISR: OpenWeather HTTP request
+// Sends HTTP request, parses JSON, stores relevant weather info
+void getWeather(){
+  String serverPath = "api.openweathermap.org/data/2.5/weather?id="+cityID+"&appid="+openWeatherMapApiKey+"&units="+units;
+  jsonBuffer = httpGETRequest(serverPath.c_str());
+  Serial.println(jsonBuffer);
+  JSONVar myObject = JSON.parse(jsonBuffer);
+  
+  // JSON.typeof(jsonVar) can be used to get the type of the var
+  if (JSON.typeof(myObject) == "undefined") {
+    Serial.println("Parsing input failed!");
+    return;
+  }
+  Serial.print("JSON object = ");
+  Serial.println(myObject);
+  Serial.print("Temperature: ");
+  Serial.println(myObject["main"]["temp"]);
+  Serial.print("Pressure: ");
+  Serial.println(myObject["main"]["pressure"]);
+  Serial.print("Humidity: ");
+  Serial.println(myObject["main"]["humidity"]);
+  Serial.print("Wind Speed: ");
+  Serial.println(myObject["wind"]["speed"]);
+
+  // TODO: store relevant info in globals
 }
 
 // ************************************* MAIN DRIVER FUNCTIONS **********************************
@@ -165,23 +233,32 @@ void setup() {
   led1.off();
   pinMode(back, INPUT);
   pinMode(confirm, INPUT);
+  pinMode(rot1, INPUT);
+  pinMode(rot2, INPUT);
+  delay(50); // allow rotary pins to debounce
+  int rotary1 = digitalRead(rot1) ? 1 : 0; // If HIGH, make 1, else 0
+  int rotary2 = digitalRead(rot2) ? 1 : 0;
+  rotState = 2*rotary1 + rotary2; // Will yield 4 distinct states
 
   pinMode(12, OUTPUT); // TESTING LED for alarm function
   digitalWrite(12, LOW);
   ringMin = alarmMin; // Set alarm to ring next at user-set time
   ringHr = alarmHr;
 
-  currentState = 0;
+  currentState = 0; // Initialize FSM of clock interface
   nextState = 0;
 
   // Attach back/confirm button interrupts to our handler
   attachInterrupt(digitalPinToInterrupt(back), pressBack, FALLING); // TODO: add interrupt service routine for button presses
   attachInterrupt(digitalPinToInterrupt(confirm), pressConfirm, FALLING); // State changes when the button is released
+  attachInterrupt(digitalPinToInterrupt(rot1), scrollWheel, CHANGE); // Rotary dial lead 1
+  attachInterrupt(digitalPinToInterrupt(rot2), scrollWheel, CHANGE); // Rotary dial lead 2
 
   timer.setInterval(200L, stateChange); // State Change check function
   timer.setInterval(1000L, updateClock); // Check clock time once per second
   timer.setInterval(10000L, noInteract); // If no interactions for 10 seconds, go back to clock (S0)
   timer.setInterval(20000L, ringAlarm); // Each 20 secs, check if alarm needs to ring
+  timer.setInterval(120000L, getWeather); // Retrieve current weather every 2 mins
 
   /* DISPLAY INITIALIZING */
   display.init(115200); // enable diagnostic output on Serial
