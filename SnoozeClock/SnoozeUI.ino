@@ -5,6 +5,7 @@
 #include "Fonts/LexendMega_Regular24pt7b.h"
 #include "Fonts/LexendMega_Regular30pt7b.h"
 #include "Fonts/LexendMega_Regular36pt7b.h"
+#include "11n.h"
 
 // State 0
 void clockDisplay() {
@@ -12,7 +13,7 @@ void clockDisplay() {
   // unread message: display message notification
   // Partial update for minutes change?
 
-  Serial.println("clk disp");
+  Serial.println("State 0: Main Screen");
   display.fillScreen(GxEPD_WHITE);
   display.setTextColor(GxEPD_RED);
   display.setFont(&LexendMega_Regular9pt7b);
@@ -28,15 +29,16 @@ void clockDisplay() {
   // Display weather
   display.print(temp+"*F"); 
   // TODO: include correct weather icon, get weather data from API call
+  display.drawBitmap(drk_bits, 184, 10, 72, 70, GxEPD_BLACK);
 
   // Display the current time
   display.setFont(&LexendMega_Regular36pt7b);
   display.setTextColor(GxEPD_BLACK);
-  display.setCursor(23, 100);
+  display.setCursor(23, 100); // Looks good at (23, 100)
   display.print(&timeinfo, "%I:%M"); // 12 hr time, minutes
   display.setFont(&LexendMega_Regular9pt7b);
   Serial.println(display.getCursorX()); 
-  display.println(&timeinfo, "%p");
+  display.println(&timeinfo, "%p"); // AM or PM
   display.update();
 }
 

@@ -42,8 +42,9 @@ byte minutes; // Holds current minute value for clock display
 String openWeatherMapApiKey = "4428b3a249626b07f1a2769374ecf1ce";
 String cityID = "4671654"; // Austin
 String units = "imperial";
-String jsonBuffer; // Used to parse response
-String temp = "--";
+String jsonBuffer; 
+String temp = "--"; // global store of weather as String
+String iconID; // Code for OpenWeather icon to display
 
 // Alarm Variables
 bool alarmDays[7] = {1, 1, 1, 1, 1, 1, 1}; // Index represents days since Sunday
@@ -66,7 +67,7 @@ String messages[MAX_MESSAGES]; // Keep Track of all messages sent
 
 /* Virtual Connections/Pins
     V0:
-    V1: Terminal Input
+    V1: Terminal Input (Smartphone)
     V2: Notification LED
     V3:
     V5:
@@ -205,22 +206,12 @@ void getWeather(){
   // JSON.typeof(jsonVar) can be used to get the type of the var
   if (JSON.typeof(myObject) == "undefined") {
     Serial.println("Parsing input failed!");
+    temp = "--";
     return;
   }
-  Serial.print("JSON object = ");
-  Serial.println(myObject);
-  Serial.print("Temperature: ");
-  Serial.println(myObject["main"]["temp"]);
-  Serial.print("Pressure: ");
-  Serial.println(myObject["main"]["pressure"]);
-  Serial.print("Humidity: ");
-  Serial.println(myObject["main"]["humidity"]);
-  Serial.print("Wind Speed: ");
-  Serial.println(myObject["wind"]["speed"]);
-
-  // TODO: store relevant info in globals
-  temp = JSON.stringify(myObject["main"]["temp"]);
-  Serial.println("Temp: " + temp); 
+  int tempRead = int(myObject["main"]["temp"]);
+  temp = String(tempRead); // Round, truncate decimal, convert to string
+  iconID = myObject["weather"]["icon"]; 
 }
 
 // ************************************* MAIN DRIVER FUNCTIONS **********************************
@@ -231,6 +222,7 @@ void setup() {
   Blynk.begin(auth, ssid, pass);
   configTime(cstOffset_sec, daylightOffset_sec, ntpServer); //init and get the time
   getLocalTime(&timeinfo); 
+  getWeather();
 
   pinMode(inbox, OUTPUT); // Notification light
   digitalWrite(inbox, LOW);
@@ -262,7 +254,7 @@ void setup() {
   timer.setInterval(1000L, updateClock); // Check clock time once per second
   timer.setInterval(10000L, noInteract); // If no interactions for 10 seconds, go back to clock (S0)
   timer.setInterval(20000L, ringAlarm); // Each 20 secs, check if alarm needs to ring
-  timer.setInterval(120000L, getWeather); // Retrieve current weather every 2 mins
+  timer.setInterval(300000L, getWeather); // Retrieve current weather every 5 mins
 
   /* DISPLAY INITIALIZING */
   display.init(115200); // enable diagnostic output on Serial
