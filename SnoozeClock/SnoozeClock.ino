@@ -209,9 +209,10 @@ void getWeather(){
     temp = "--";
     return;
   }
-  int tempRead = int(myObject["main"]["temp"]);
-  temp = String(tempRead); // Round, truncate decimal, convert to string
-  iconID = myObject["weather"]["icon"]; 
+  double tempRead = round(double(myObject["main"]["temp"]));
+  temp = String(int(tempRead)); // Round, truncate decimal, convert to string
+  iconID = (JSON.stringify(myObject["weather"][0]["icon"])).substring(1,3); 
+  Serial.println("ICON: " + iconID);
 }
 
 // ************************************* MAIN DRIVER FUNCTIONS **********************************

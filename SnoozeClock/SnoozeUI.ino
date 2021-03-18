@@ -5,7 +5,7 @@
 #include "Fonts/LexendMega_Regular24pt7b.h"
 #include "Fonts/LexendMega_Regular30pt7b.h"
 #include "Fonts/LexendMega_Regular36pt7b.h"
-#include "11n.h"
+#include "weatherIcons.h"
 
 // State 0
 void clockDisplay() {
@@ -28,8 +28,7 @@ void clockDisplay() {
   
   // Display weather
   display.print(temp+"*F"); 
-  // TODO: include correct weather icon, get weather data from API call
-  display.drawBitmap(drk_bits, 184, 10, 72, 70, GxEPD_BLACK);
+  showWeatherIcon();
 
   // Display the current time
   display.setFont(&LexendMega_Regular36pt7b);
@@ -58,6 +57,41 @@ void updateTime(){
   delay(2000);
   Serial.println(&timeinfo, "%I:%M");
 
+}
+
+void showWeatherIcon(){
+  // Displays icons based on OpenWeather api response
+  
+  if(iconID.equals("01")){
+    display.drawBitmap(sun,220,10,49,49,GxEPD_RED); // Sun Icon
+  }
+  else if(iconID.equals("02")){
+    display.drawBitmap(partly,220,10,65,43,GxEPD_BLACK); // Partly cloudy
+    display.drawBitmap(redpartly,220,10,65,43,GxEPD_RED); // Red portion
+  }
+  else if(iconID.equals("03")){
+    display.drawBitmap(cloud,220,10,59,37,GxEPD_BLACK); // Single cloud icon
+  }
+  else if(iconID.equals("04")){
+    display.drawBitmap(heavyclouds,220,10,69,43,GxEPD_BLACK);
+  }
+  else if(iconID.equals("09")){
+    display.drawBitmap(heavyrain,220,10,56,50,GxEPD_BLACK);
+  }
+  else if(iconID.equals("10")){
+    display.drawBitmap(rain,220,10,52,50,GxEPD_BLACK); // lighter rain with sun
+    display.drawBitmap(redrain,220,10,52,50,GxEPD_RED);
+  }
+  else if(iconID.equals("11")){
+    display.drawBitmap(thunder,220,10,66,54,GxEPD_BLACK); // thunderstorm
+    display.drawBitmap(redthunder,220,10,66,54,GxEPD_RED);
+  }
+  else if(iconID.equals("13")){
+    display.drawBitmap(snow,220,10,38,41,GxEPD_BLACK);// Snow
+  }
+  else if(iconID.equals("50")){
+    display.drawBitmap(fog,220,10,55,43,GxEPD_BLACK);
+  }
 }
 
 // State 1
