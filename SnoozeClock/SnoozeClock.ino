@@ -3,8 +3,8 @@
 #define BLYNK_PRINT Serial
 
 // GUI Libraries
-#include <Adafruit_GFX.h>    // Core graphics library
-#include <Adafruit_ST7735.h> // Hardware-specific library
+//#include <Adafruit_GFX.h>    // Core graphics library
+//#include <Adafruit_ST7735.h> // Hardware-specific library
 #include <SPI.h>
 
 #include <HTTPClient.h>
@@ -15,17 +15,20 @@
 #include <BlynkSimpleEsp32.h>
 #include "time.h"
 
-#define back 22 // Alarm/back button
-#define confirm 21 // Messages/forward/confirm
-#define rot1 32 // Rotary dial pin
-#define rot2 33
-
 // DISPLAY  VARIABLES
 #include <GxEPD.h>
 #include <GxGDEW029Z10/GxGDEW029Z10.h> // 2.9" b/w/r
 #include GxEPD_BitmapExamples // Might not be needed
 #include <GxIO/GxIO_SPI/GxIO_SPI.h>
 #include <GxIO/GxIO.h>
+
+// GPIO Pins
+#define nightLight 35 // night LED to light screen
+#define inbox 23 // Message received indicator LED
+#define back 22 // Alarm/back button
+#define confirm 21 // Messages/forward/confirm
+#define rot1 32 // Rotary dial pins
+#define rot2 33
 
 GxIO_Class io(SPI, /*CS=5*/ SS, /*DC=*/ 17, /*RST=*/ 16); // arbitrary selection of 17, 16
 GxEPD_Class display(io, /*RST=*/ 16, /*BUSY=*/ 4); // arbitrary selection of (16), 4
@@ -37,6 +40,7 @@ const long  cstOffset_sec = -21600;
 const int   daylightOffset_sec = 3600;
 struct tm timeinfo; // Holds searched time results
 byte minutes; // Holds current minute value for clock display
+long epochTime; 
 
 // OpenWeather Variables
 String openWeatherMapApiKey = "4428b3a249626b07f1a2769374ecf1ce";
@@ -45,6 +49,8 @@ String units = "imperial";
 String jsonBuffer; 
 String temp = "--"; // global store of weather as String
 String iconID; // Code for OpenWeather icon to display
+long sunrise; 
+long sunset; 
 
 // Alarm Variables
 bool alarmDays[7] = {1, 1, 1, 1, 1, 1, 1}; // Index represents days since Sunday
@@ -61,7 +67,6 @@ char ssid[] = "ATTcIIbe6a"; // WiFi credentials.
 char pass[] = "ss7aaffspp#m"; // Set password to "" for open networks.
 
 // Messages Variables
-#define inbox 23 // Message received indicator LED
 #define MAX_MESSAGES 10
 String messages[MAX_MESSAGES]; // Keep Track of all messages sent
 
@@ -120,12 +125,14 @@ BLYNK_WRITE(V7) {
 void pressBack() {
   interacted = true;
   backChange = true; // Mark pin value changed
+  checkNightLight();
 }
 
 // Confirm switch is connected to rotary encoder
 void pressConfirm() {
   interacted = true;
   confirmChange = true; // Mark pin value changed
+  checkNightLight();
 }
 
 void scrollWheel() {
@@ -159,6 +166,15 @@ void scrollWheel() {
   }
   
   rotState = newState; // scrollChange has been adjusted, state updates  
+  checkNightLight();
+}
+
+void checkNightLight(){
+  long offset = 86400; // 60*60*24 approx. seconds in a day
+  // if current time is between sunset and sunrise of coming day, turn the screen light on
+  if((sunset < epochTime) && ((sunrise + offset) > epochTime)){
+     digitalWrite(nightLight, HIGH);
+  }
 }
 
 // Timer-called ISR: if no interaction since last call, return to Clock display (St. 0)
@@ -169,6 +185,7 @@ void noInteract() {
     nextState = 0;
     Serial.print("Back to 0: ");
     Serial.println(nextState);
+    digitalWrite(nightLight, LOW); // Turn off light if not touched
     clockDisplay();
   }
   interacted = false; // If no buttons pushed before next call, we will return
@@ -177,13 +194,12 @@ void noInteract() {
 // ISR to update clock time, sync with server
 // Updates display if showing clock screen
 void updateClock() {
-
-  // TODO: update clock
-  /* if connected: get server time
-    else: internal time (?)
-
-    if current mins != mins, update display
-  */
+  // TODO: maintain internal time if not connected?
+   
+  time(&epochTime); // Get Unix time in seconds
+  Serial.print("Epoch time: ");
+  Serial.println(epochTime);
+  
   if (!getLocalTime(&timeinfo)) {
     Serial.println("Failed to obtain time");
     return;
@@ -211,8 +227,10 @@ void getWeather(){
   }
   double tempRead = round(double(myObject["main"]["temp"]));
   temp = String(int(tempRead)); // Round, truncate decimal, convert to string
-  iconID = (JSON.stringify(myObject["weather"][0]["icon"])).substring(1,3); 
+  iconID = (JSON.stringify(myObject["weather"][0]["icon"])).substring(1,3); // Get ID of weather icon
   Serial.println("ICON: " + iconID);
+  sunrise = long(myObject["sys"]["sunrise"]);
+  sunset = long(myObject["sys"]["sunset"]);
 }
 
 // ************************************* MAIN DRIVER FUNCTIONS **********************************
@@ -227,6 +245,8 @@ void setup() {
 
   pinMode(inbox, OUTPUT); // Notification light
   digitalWrite(inbox, LOW);
+  pinMode(nightLight, OUTPUT);
+  digitalWrite(nightLight, LOW);
   led1.off();
   pinMode(back, INPUT);
   pinMode(confirm, INPUT);

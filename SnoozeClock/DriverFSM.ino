@@ -99,7 +99,7 @@ void stateChange(){
       if(!backChange && confirmChange){
         nextState = 4; // Enabled/Disabled, proceed to hour
         Serial.println(nextState); 
-        setHoursScreen(); 
+//        setHoursScreen(); 
       }
       break;
 
@@ -119,11 +119,11 @@ void stateChange(){
         */
       if(backChange && !confirmChange){
         nextState = 3; // Return to Enable
-        setAlarmScreen();        
+//        setAlarmScreen();        
       }
       if(!backChange && confirmChange){
         nextState = 5; // Set minutes next
-        setMinutesScreen(); 
+//        setMinutesScreen(); 
       }
       break; 
 
@@ -143,11 +143,11 @@ void stateChange(){
         */
       if(backChange && !confirmChange){
         nextState = 4; // back to set hours
-        setHoursScreen(); 
+//        setHoursScreen(); 
       }
       if(!backChange && confirmChange){
         nextState = 6; // Set schedule next
-        setScheduleScreen(); 
+//        setScheduleScreen(); 
       }
       break; 
 
@@ -158,7 +158,7 @@ void stateChange(){
       
       if(backChange && !confirmChange){
         nextState = 5; // Back to clock screen
-        setMinutesScreen(); 
+//        setMinutesScreen(); 
       }
       if(!backChange && confirmChange){
         nextState = 0; // back to set minutes

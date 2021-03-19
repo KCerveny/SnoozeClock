@@ -6,6 +6,7 @@
 #include "Fonts/LexendMega_Regular30pt7b.h"
 #include "Fonts/LexendMega_Regular36pt7b.h"
 #include "weatherIcons.h"
+#include "miscIcons.h"
 
 // State 0
 void clockDisplay() {
@@ -15,7 +16,7 @@ void clockDisplay() {
 
   Serial.println("State 0: Main Screen");
   display.fillScreen(GxEPD_WHITE);
-  display.setTextColor(GxEPD_RED);
+  display.setTextColor(GxEPD_BLACK); // was GxEPD_RED
   display.setFont(&LexendMega_Regular9pt7b);
 
   // Display day and date
@@ -26,14 +27,24 @@ void clockDisplay() {
   Serial.println(display.getCursorX()); 
   Serial.println(display.getCursorY());
   
-  // Display weather
+  // Display weatherIcons
+  display.setTextColor(GxEPD_RED);
   display.print(temp+"*F"); 
   showWeatherIcon();
 
+  // Display notification icons
+  if(alarmSet == 1){
+    display.drawBitmap(gridicons_bell, 272, 0, 24, 24, GxEPD_BLACK);
+  }
+  if(digitalRead(inbox) == HIGH){
+    display.drawBitmap(gridicons_mail, 247, 0, 24, 24, GxEPD_RED);
+  }
+  
+  
   // Display the current time
   display.setFont(&LexendMega_Regular36pt7b);
   display.setTextColor(GxEPD_BLACK);
-  display.setCursor(23, 100); // Looks good at (23, 100)
+  display.setCursor(15, 108); // Originally at (23, 100)
   display.print(&timeinfo, "%I:%M"); // 12 hr time, minutes
   display.setFont(&LexendMega_Regular9pt7b);
   Serial.println(display.getCursorX()); 
@@ -59,38 +70,41 @@ void updateTime(){
 
 }
 
+// Displays icons based on OpenWeather api response
 void showWeatherIcon(){
-  // Displays icons based on OpenWeather api response
+  // icon width and heights defined in weatherIcons.h
+  uint16_t x_coord = 290; // Placement of icons on screen
+  uint16_t y_coord = 85; // Screen dims: 296px wide, 128px tall
   
   if(iconID.equals("01")){
-    display.drawBitmap(sun,220,10,49,49,GxEPD_RED); // Sun Icon
+    display.drawBitmap(sun,(x_coord-sun_w),(y_coord-sun_h),sun_w,sun_h,GxEPD_RED); // Sun Icon
   }
   else if(iconID.equals("02")){
-    display.drawBitmap(partly,220,10,65,43,GxEPD_BLACK); // Partly cloudy
-    display.drawBitmap(redpartly,220,10,65,43,GxEPD_RED); // Red portion
+    display.drawBitmap(partly,(x_coord-partly_w),(y_coord-partly_h),partly_w,partly_h,GxEPD_BLACK); // Partly cloudy
+    display.drawBitmap(redpartly,(x_coord-partly_w),(y_coord-partly_h),partly_w,partly_h,GxEPD_RED); // Red portion
   }
   else if(iconID.equals("03")){
-    display.drawBitmap(cloud,220,10,59,37,GxEPD_BLACK); // Single cloud icon
+    display.drawBitmap(cloud,(x_coord-cloud_w),(y_coord-cloud_h),cloud_w,cloud_h,GxEPD_BLACK); // Single cloud icon
   }
   else if(iconID.equals("04")){
-    display.drawBitmap(heavyclouds,220,10,69,43,GxEPD_BLACK);
+    display.drawBitmap(heavyclouds,(x_coord-heavyclouds_w),(y_coord-heavyclouds_h),heavyclouds_w,heavyclouds_h,GxEPD_BLACK);
   }
   else if(iconID.equals("09")){
-    display.drawBitmap(heavyrain,220,10,56,50,GxEPD_BLACK);
+    display.drawBitmap(heavyrain,(x_coord-heavyrain_w),(y_coord-heavyrain_h),heavyrain_w,heavyrain_h,GxEPD_BLACK);
   }
   else if(iconID.equals("10")){
-    display.drawBitmap(rain,220,10,52,50,GxEPD_BLACK); // lighter rain with sun
-    display.drawBitmap(redrain,220,10,52,50,GxEPD_RED);
+    display.drawBitmap(rain,(x_coord-rain_w),(y_coord-rain_h),rain_w,rain_h,GxEPD_BLACK); // lighter rain with sun
+    display.drawBitmap(redrain,(x_coord-rain_w),(y_coord-rain_h),rain_w,rain_h,GxEPD_RED);
   }
   else if(iconID.equals("11")){
-    display.drawBitmap(thunder,220,10,66,54,GxEPD_BLACK); // thunderstorm
-    display.drawBitmap(redthunder,220,10,66,54,GxEPD_RED);
+    display.drawBitmap(thunder,(x_coord-thunder_w),(y_coord-thunder_h),thunder_w,thunder_h,GxEPD_BLACK); // thunderstorm
+    display.drawBitmap(redthunder,(x_coord-thunder_w),(y_coord-thunder_h),thunder_w,thunder_h,GxEPD_RED);
   }
   else if(iconID.equals("13")){
-    display.drawBitmap(snow,220,10,38,41,GxEPD_BLACK);// Snow
+    display.drawBitmap(snow,(x_coord-snow_w),(y_coord-snow_h),snow_w,snow_h,GxEPD_BLACK);// Snow
   }
   else if(iconID.equals("50")){
-    display.drawBitmap(fog,220,10,55,43,GxEPD_BLACK);
+    display.drawBitmap(fog,(x_coord-fog_w),(y_coord-fog_h),fog_w,fog_h,GxEPD_BLACK);
   }
 }
 
@@ -254,58 +268,5 @@ void setAlarmScreen() {
   alarmScreenInit();
   display.fillRect(0, 100, 40, 3, GxEPD_BLACK); // Underline to indicate setting alarm on/off
   display.update();
-
-  // DEBUGGING ONLY
-  delay(3000);
-  alarmSet = alarmSet ^ 1; // Toggle to opposite value
-  setHoursScreen();
-}
-
-// State 4
-void setHoursScreen() {
-  onOff(); // Update on/off setting
-  mins(); // Update mins if moving backwards
-  display.fillRect(0, 100, 296, 3, GxEPD_WHITE); // remove all other underlines
-  display.fillRect(42,100, 58, 3, GxEPD_BLACK); // add hours underline
-  display.updateWindow(0,35,191,65,true); // Update from beginning of onOff to end of mins
-
-  // DEBUGGING ONLY
-  delay(3000);
-  alarmHr = 12; // Toggle to opposite value
-  setMinutesScreen();
-}
-
-// State 5
-void setMinutesScreen() {
-  hours(); // Update hours setting
-  AMPM(); // Update if moving backwards
-  display.fillRect(0, 100, 296, 3, GxEPD_WHITE); // remove all other underlines
-  display.fillRect(103,100, 88, 3, GxEPD_BLACK); // add mins underline
-  display.updateWindow(42,35,185,65,true); // Update from beginning of hours to end of AMPM
-
-  // DEBUGGING ONLY
-  delay(3000);
-  alarmHr = 12; // Toggle to opposite value
-  setAMPMScreen();
-}
-
-// TODO: we are missing the AMPM state for setting this alarm
-void setAMPMScreen(){
-  mins();
-  schedule();
-  display.fillRect(0, 100, 296, 3, GxEPD_WHITE); // remove all other underlines
-  display.fillRect(193,100, 34, 3, GxEPD_BLACK); // add AMPM underline
-  display.updateWindow(103,35,193,65,true); // Update from beginning of hours to end of schedule
-
-  // DEBUGGING
-  delay(1000);
-  setScheduleScreen();
-}
-
-// State 6
-void setScheduleScreen() {
-  AMPM(); 
-  display.fillRect(0, 100, 296, 3, GxEPD_WHITE); // remove all other underlines
-  display.fillRect(228,100, 68, 3, GxEPD_BLACK); // add underline
 
 }
