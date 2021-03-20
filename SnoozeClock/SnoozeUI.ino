@@ -187,7 +187,7 @@ void AMPM(){
     display.println("AM");  
     display.setTextColor(GxEPD_BLACK);
     display.setCursor(193, 82); 
-    display.print("PM"); 
+    display.print("PM");  
   }
   Serial.print("Cursor after AMPM: ");
   Serial.print(display.getCursorX());

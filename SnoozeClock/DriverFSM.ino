@@ -3,32 +3,19 @@ void stateChange(){
   
   // Button override to turn off alarm
   if(isRinging){
+    if(backChange && !confirmChange) snooze(); // back button : snooze for n mins
+    if(!backChange && confirmChange) alarmOff(); // confirm: turn off alarm
     
-    // back button : snooze for n mins
-    if(backChange && !confirmChange){
-      isRinging = false; // Turn off alarm until next invoked ring
-      digitalWrite(12, LOW); 
-      addTime(); // Function to add snooze time until next alarm ringing
-    }
-    // confirm: turn off alarm
-    if(!backChange && confirmChange){
-      isRinging = false; 
-      digitalWrite(12, LOW); // Stand-in for alarm
-      ringMin = alarmMin; // Reset alarm to ring next at user-set time
-      ringHr = alarmHr;
-    }
     backChange = false; 
     confirmChange = false; 
+    scrollChange = 0;
     return; 
   }
 
 
   // Continue to conventional screen change
   switch(currentState){ 
-    case 0: // Main Clock screen
-    
-      // TODO: display current time GUI
-      
+    case 0: // Main Clock screen      
       if(backChange && !confirmChange){
         nextState = 3; // Set alarm
         Serial.println(nextState); 
@@ -76,20 +63,12 @@ void stateChange(){
       }
       break; 
 
-    // ALARM SETTINGS: States 3,4,5,6
+    // ALARM SETTINGS: States 3,4,5,6,7
     case 3: // Alarm Enable Screen
-      // Selection functions
-      /* Enable Alarm
-       * If scrollUp && !scrollDown && !alarmSet: 
-       *  alarmSet = true; // Cursor is over the "on"
-       *  update GUI to reflect that "on" is selected
-       */
-
-       /* Disable Alarm
-        *  If !scrollUp && scrollDown && alarmSet: 
-        *   alarmSet = false; // Cursor is over the "off"
-        *   update GUI to reflect that "off" is selected
-        */
+      // Rotary dial turns alarm on/off
+      if(abs(scrollChange)%2 != 0){
+        alarmSet ^= 1; // If scroll is odd, alarm state switches
+      }
       
       if(backChange && !confirmChange){
         nextState = 0; // Clock
@@ -99,31 +78,18 @@ void stateChange(){
       if(!backChange && confirmChange){
         nextState = 4; // Enabled/Disabled, proceed to hour
         Serial.println(nextState); 
-//        setHoursScreen(); 
       }
       break;
 
     case 4: // Hour Set Function
-      // Hour selection functions
-      /* Increment Hour
-       * If scrollUp && !scrollDown: 
-       *  alarmHr += (alarmHr + 1)%24 // Overflow back to midnight
-       *  update GUI to show new hour
-       */
-
-       /* Decrement Hour
-        *  If !scrollUp && scrollDown: 
-        *   alarmHr --; 
-        *   if(alarmHr < 0) alarmHr = 23; // roll around back to 11 pm
-        *   update GUI to show new hour
-        */
+      // Rotary selection
+      alarmHr += scroll
+      
       if(backChange && !confirmChange){
-        nextState = 3; // Return to Enable
-//        setAlarmScreen();        
+        nextState = 3; // Return to Enable      
       }
       if(!backChange && confirmChange){
         nextState = 5; // Set minutes next
-//        setMinutesScreen(); 
       }
       break; 
 
@@ -174,6 +140,7 @@ void stateChange(){
   }
 
   // TODO: scrollUp, scrollDown = false, have been handled in state
+  scrollChange = 0;
   backChange = false; 
   confirmChange = false; 
   

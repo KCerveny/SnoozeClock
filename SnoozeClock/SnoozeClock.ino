@@ -1,12 +1,7 @@
-
 /* Comment this out to disable prints and save space */
 #define BLYNK_PRINT Serial
 
-// GUI Libraries
-//#include <Adafruit_GFX.h>    // Core graphics library
-//#include <Adafruit_ST7735.h> // Hardware-specific library
 #include <SPI.h>
-
 #include <HTTPClient.h>
 #include <WiFi.h>
 #include <WiFiClient.h>
@@ -15,10 +10,9 @@
 #include <BlynkSimpleEsp32.h>
 #include "time.h"
 
-// DISPLAY  VARIABLES
+// DISPLAY LIBS
 #include <GxEPD.h>
 #include <GxGDEW029Z10/GxGDEW029Z10.h> // 2.9" b/w/r
-#include GxEPD_BitmapExamples // Might not be needed
 #include <GxIO/GxIO_SPI/GxIO_SPI.h>
 #include <GxIO/GxIO.h>
 
@@ -30,9 +24,9 @@
 #define rot1 32 // Rotary dial pins
 #define rot2 33
 
+// EInk Object initialized
 GxIO_Class io(SPI, /*CS=5*/ SS, /*DC=*/ 17, /*RST=*/ 16); // arbitrary selection of 17, 16
-GxEPD_Class display(io, /*RST=*/ 16, /*BUSY=*/ 4); // arbitrary selection of (16), 4
-// END DISPLAY VARIABLES
+GxEPD_Class display(io, /*RST=*/ 16, /*BUSY=*/ 4); // arbitrary selection of (16), 
 
 // UTP Variables
 const char* ntpServer = "pool.ntp.org";
@@ -53,12 +47,16 @@ long sunrise;
 long sunset; 
 
 // Alarm Variables
-bool alarmDays[7] = {1, 1, 1, 1, 1, 1, 1}; // Index represents days since Sunday
+/* Used for setting alarm values */
+bool alarmSet = 1; // 1=true, 0=false (We use 1,0 to store in Blynk virtual pin)
 int alarmHr = 7;  // Hr and Min saved to servers on V6
 int alarmMin = 30;
-bool alarmSet = 1; // 1=true, 0=false
+int alarmAMPM = 0; // 0=AM, 1=PM
+int alarmSchedule = 0; // 0: 7day, 1: wkdy, 2: wknd
+/* Used for ringing alarm */
 int ringMin; // Used to actually ring the alarm, in case snoozed
 int ringHr;
+bool alarmDays[7] = {1, 1, 1, 1, 1, 1, 1}; // Index represents days since Sunday
 volatile bool isRinging; // FSM button override
 
 // Connectivity Credentials
@@ -195,10 +193,7 @@ void noInteract() {
 // Updates display if showing clock screen
 void updateClock() {
   // TODO: maintain internal time if not connected?
-   
   time(&epochTime); // Get Unix time in seconds
-  Serial.print("Epoch time: ");
-  Serial.println(epochTime);
   
   if (!getLocalTime(&timeinfo)) {
     Serial.println("Failed to obtain time");
