@@ -1,5 +1,5 @@
-/* Comment this out to disable prints and save space */
-#define BLYNK_PRINT Serial
+#define BLYNK_PRINT Serial /* TODO: delete this line to increase processing */
+#define BLYNK_HEARTBEAT 20
 
 #include <SPI.h>
 #include <HTTPClient.h>
@@ -47,12 +47,15 @@ long sunrise;
 long sunset; 
 
 // Alarm Variables
+TaskHandle_t Task1; // freeRTOS task kernel variable
+
 /* Used for setting alarm values */
 bool alarmSet = 1; // 1=true, 0=false (We use 1,0 to store in Blynk virtual pin)
 int alarmHr = 7;  // Hr and Min saved to servers on V6
 int alarmMin = 30;
 int alarmAMPM = 0; // 0=AM, 1=PM
 int alarmSchedule = 0; // 0: 7day, 1: wkdy, 2: wknd
+
 /* Used for ringing alarm */
 int ringMin; // Used to actually ring the alarm, in case snoozed
 int ringHr;
@@ -61,8 +64,8 @@ volatile bool isRinging; // FSM button override
 
 // Connectivity Credentials
 char auth[] = "HVMVCQ6T1ie1ER0uix-iNEZelEf7N82z"; // You should get Auth Token in the Blynk App.
-char ssid[] = "ATTcIIbe6a"; // WiFi credentials.
-char pass[] = "ss7aaffspp#m"; // Set password to "" for open networks.
+char ssid[] = "SpicySchemeTeam"; // WiFi credentials.
+char pass[] = "spicybrainthot"; // Set password to "" for open networks.
 
 // Messages Variables
 #define MAX_MESSAGES 10
@@ -276,7 +279,17 @@ void setup() {
   display.init(115200); // enable diagnostic output on Serial
   display.setRotation(1);
   clockDisplay();
-  delay(2000);
+
+  /* SECOND CORE RUNS SOUND TASKS */
+  xTaskCreatePinnedToCore(
+                    alarmSound,   /* Task function. */
+                    "alarmSound",     /* name of task. */
+                    10000,       /* Stack size of task */
+                    NULL,        /* parameter of the task */
+                    1,           /* priority of the task */
+                    &Task1,      /* Task handle to keep track of created task */
+                    0);          /* pin task to core 0 */
+  delay(500);
 
   // This will print Blynk Software version to the Terminal Widget when
   // your hardware gets connected to Blynk Server

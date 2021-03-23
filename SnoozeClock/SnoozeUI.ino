@@ -14,7 +14,6 @@ void clockDisplay() {
   // unread message: display message notification
   // Partial update for minutes change?
 
-  Serial.println("State 0: Main Screen");
   display.fillScreen(GxEPD_WHITE);
   display.setTextColor(GxEPD_BLACK); // was GxEPD_RED
   display.setFont(&LexendMega_Regular9pt7b);
@@ -24,12 +23,13 @@ void clockDisplay() {
   display.println();
   display.print(&timeinfo, "%A, %b "); // full weekday name, abreviated month name, day
   display.println(timeinfo.tm_mday % 32);
-  Serial.println(display.getCursorX()); 
-  Serial.println(display.getCursorY());
   
   // Display weatherIcons
   display.setTextColor(GxEPD_RED);
   display.print(temp+"*F"); 
+//  display.drawBitmap(gridicons_ink, display.getCursorX()+3, display.getCursorY()-3, 24, 24, GxEPD_BLACK);
+//  display.print(perspiration+"%"); // Need to find API call for weather forecast
+  
   showWeatherIcon();
 
   // Display notification icons
@@ -44,30 +44,12 @@ void clockDisplay() {
   // Display the current time
   display.setFont(&LexendMega_Regular36pt7b);
   display.setTextColor(GxEPD_BLACK);
-  display.setCursor(15, 108); // Originally at (23, 100)
+  display.setCursor(12, 108); // Originally at (23, 100)
   display.print(&timeinfo, "%I:%M"); // 12 hr time, minutes
   display.setFont(&LexendMega_Regular9pt7b);
-  Serial.println(display.getCursorX()); 
+//  Serial.println(display.getCursorX()); 
   display.println(&timeinfo, "%p"); // AM or PM
   display.update();
-}
-
-void updateTime(){
-  display.setFont(&LexendMega_Regular36pt7b);
-  display.setTextColor(GxEPD_BLACK);
-
-  uint16_t box_x = 1;
-  uint16_t box_y = 40;
-  uint16_t box_w = display.width()-1;
-  uint16_t box_h = 50;
-  uint16_t cursor_y = box_y + box_h - 6;
-  display.fillRect(box_x, box_y, box_w, box_h, GxEPD_BLACK);
-//  display.setCursor(box_x, cursor_y);
-//  display.print(&timeinfo, "%I:%M");
-  display.updateWindow(box_x, box_y, box_w, box_h, true);
-  delay(2000);
-  Serial.println(&timeinfo, "%I:%M");
-
 }
 
 // Displays icons based on OpenWeather api response
@@ -94,7 +76,7 @@ void showWeatherIcon(){
   }
   else if(iconID.equals("10")){
     display.drawBitmap(rain,(x_coord-rain_w),(y_coord-rain_h),rain_w,rain_h,GxEPD_BLACK); // lighter rain with sun
-    display.drawBitmap(redrain,(x_coord-rain_w),(y_coord-rain_h),rain_w,rain_h,GxEPD_RED);
+//    display.drawBitmap(redrain,(x_coord-rain_w),(y_coord-rain_h),rain_w,rain_h,GxEPD_RED);
   }
   else if(iconID.equals("11")){
     display.drawBitmap(thunder,(x_coord-thunder_w),(y_coord-thunder_h),thunder_w,thunder_h,GxEPD_BLACK); // thunderstorm

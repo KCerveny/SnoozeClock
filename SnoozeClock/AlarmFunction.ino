@@ -8,6 +8,26 @@ void ringAlarm(){
   }
 }
 
+// SECOND CORE: managing sound output
+// Checks status of "isRinging" set by ringAlarm()
+void alarmSound( void * pvParameters ){
+  Serial.print("Sound management on core ");
+  Serial.println(xPortGetCoreID());
+  bool soundStarted = false; 
+
+  for(;;){
+    if(isRinging && !soundStarted){
+      soundStarted = true; 
+      // Start the alarm sound
+    }
+    else if(!isRinging && soundStarted){
+      soundStarted = false; 
+      // Turn off the alarm sound
+    }
+    
+  }
+}
+
 // Alarm noise
 // Turn off alarm function
 void alarmOff(){
@@ -31,38 +51,51 @@ void addTime(){
   ringMin = (timeinfo.tm_min + timeAdded) % 60; 
 }
 
-// Alarm Setting Helper Functions
-// ##############################
-setAlarmHour(){
+/* SET ALARM HELPER FUNCTIONS */
+void setAlarmHour(){
   alarmHr += scrollChange; 
   alarmHr %= 24; // If negative or greater than 23, bring back to range [0,23]
-  if(ampm ^ (alarmHr < 12)) alarmHr += (alarmHr < 12) ? 12 : -12;
+  if(alarmAMPM ^ (alarmHr > 11)){
+    alarmHr += alarmAMPM ? -12 : 12;
+  }
 }
 
-setAlarmMin(){
+void setAlarmMin(){
   alarmMin += scrollChange;
   alarmMin %= 60;
 }
 
-setAlarmAMPM(){
+void setAlarmAMPM(){
   if(scrollChange%2 != 0){ // If we scrolled odd number, toggle AMPM
     alarmAMPM ^= 1; // Toggle AMPM value
     alarmHr += (alarmHr < 12) ? 12 : -12; // if less than 12, add 12, else subtract 12
   }
 }
 
-setAlarmSchedule(){
+void setAlarmSchedule(){
   alarmSchedule += scrollChange;
   alarmSchedule %= 3; // Adjust to range [0:2]
   switch(alarmSchedule){
     case 0: // 7day
-      alarmDays = {1, 1, 1, 1, 1, 1, 1};
+      for(int i=0; i<7; i++){alarmDays[i] = 1;}
       break;
     case 1: // wkdy
-      alarmDays = {0, 1, 1, 1, 1, 1, 0};
+      alarmDays[0] = 0;
+      alarmDays[1] = 1;
+      alarmDays[2] = 1;
+      alarmDays[3] = 1;
+      alarmDays[4] = 1;
+      alarmDays[5] = 1;
+      alarmDays[6] = 0;
       break;
     case 2: // wknd
-      alarmDays = {1, 0, 0, 0, 0, 0, 1};
+      alarmDays[0] = 1; // Sun
+      alarmDays[1] = 0;
+      alarmDays[2] = 0;
+      alarmDays[3] = 0;
+      alarmDays[4] = 0;
+      alarmDays[5] = 0;
+      alarmDays[6] = 1; // Sat
       break;
   }
 }

@@ -83,7 +83,7 @@ void stateChange(){
 
     case 4: // Hour Set Function
       // Rotary selection
-      alarmHr += scroll
+      setAlarmHour();
       
       if(backChange && !confirmChange){
         nextState = 3; // Return to Enable      
@@ -94,41 +94,37 @@ void stateChange(){
       break; 
 
     case 5: // Minute Set Function
-      // Minute selection functions
-      /* Increment Minute
-       * If scrollUp && !scrollDown: 
-       *  alarmMin += (alarmMin + 1)%60 // Roll over back to xx:00
-       *  update GUI to show new min
-       */
-
-       /* Decrement Minute
-        *  If !scrollUp && scrollDown: 
-        *   alarmMin --; 
-        *   if(alarmMin < 0) alarmMin = 59; // roll around back to xx:59
-        *   update GUI to show new min
-        */
+      setAlarmMin();
+      
       if(backChange && !confirmChange){
-        nextState = 4; // back to set hours
-//        setHoursScreen(); 
+        nextState = 4; // back to set hours 
       }
       if(!backChange && confirmChange){
-        nextState = 6; // Set schedule next
-//        setScheduleScreen(); 
+        nextState = 6; // Set AMPM next
       }
       break; 
 
-    case 6: // Alarm Schedule Function
-      // Schedule Select Functions
-
-      // TODO: how to select schedules
+    case 6: // AMPM Function
+      setAlarmAMPM();
       
       if(backChange && !confirmChange){
-        nextState = 5; // Back to clock screen
-//        setMinutesScreen(); 
+        nextState = 5; // Back to set minutes
       }
       if(!backChange && confirmChange){
-        nextState = 0; // back to set minutes
+        nextState = 7; // back to set minutes
+      }
+      break; 
+
+    case 7: // Alarm Schedule Function
+      setAlarmSchedule();
+
+      if(backChange && !confirmChange){
+        nextState = 6; // Back to AMPM
+      }
+      if(!backChange && confirmChange){
+        nextState = 0; // back to home screen
         Blynk.virtualWrite(V6, alarmHr, alarmMin); // Save values to the blynk Server 
+        // TODO: Update ring hours and mins
         clockDisplay(); 
       }
       break; 
