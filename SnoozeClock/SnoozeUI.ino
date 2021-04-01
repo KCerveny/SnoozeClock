@@ -15,7 +15,7 @@ void clockDisplay() {
   // Partial update for minutes change?
 
   display.fillScreen(GxEPD_WHITE);
-  display.setTextColor(GxEPD_BLACK); // was GxEPD_RED
+  display.setTextColor(GxEPD_RED);
   display.setFont(&LexendMega_Regular9pt7b);
 
   // Display day and date
@@ -25,27 +25,26 @@ void clockDisplay() {
   display.println(timeinfo.tm_mday % 32);
   
   // Display weatherIcons
-  display.setTextColor(GxEPD_RED);
-  display.print(temp+"*F "); 
   display.setTextColor(GxEPD_BLACK);
+  display.print(temp+"*F "); 
+  display.drawBitmap(gridicons_ink, display.getCursorX(), display.getCursorY()-16, 14, 19, GxEPD_BLACK, GxEPD::bm_transparent);
+  display.setCursor(display.getCursorX()+14+3 , display.getCursorY());
   display.print(precip+"%");
-//  display.drawBitmap(gridicons_ink, display.getCursorX()+3, display.getCursorY()-3, 24, 24, GxEPD_BLACK);
-  
   showWeatherIcon();
 
   // Display notification icons
   if(alarmSet == 1){
     display.drawBitmap(gridicons_bell, 272, 0, 24, 24, GxEPD_BLACK);
   }
-  if(digitalRead(inbox) == HIGH){
-    display.drawBitmap(gridicons_mail, 247, 0, 24, 24, GxEPD_RED);
+  if(digitalRead(onboard) == HIGH){
+    display.drawBitmap(gridicons_mail, 272-24-3, 0, 24, 24, GxEPD_RED);
   }
   
   
   // Display the current time
   display.setFont(&LexendMega_Regular36pt7b);
   display.setTextColor(GxEPD_BLACK);
-  display.setCursor(12, 108); // Originally at (23, 100)
+  display.setCursor(12, 114); // Originally at (23, 100)
   display.print(&timeinfo, "%I:%M"); // 12 hr time, minutes
   display.setFont(&LexendMega_Regular9pt7b);
 //  Serial.println(display.getCursorX()); 
@@ -64,7 +63,7 @@ void showWeatherIcon(){
   }
   else if(iconID.equals("02")){
     display.drawBitmap(partly,(x_coord-partly_w),(y_coord-partly_h),partly_w,partly_h,GxEPD_BLACK); // Partly cloudy
-    display.drawBitmap(redpartly,(x_coord-partly_w),(y_coord-partly_h),partly_w,partly_h,GxEPD_RED); // Red portion
+    display.drawBitmap(redpartly,(x_coord-partly_w),(y_coord-partly_h),partly_w,partly_h,GxEPD_RED, GxEPD::bm_transparent); // Red portion
   }
   else if(iconID.equals("03")){
     display.drawBitmap(cloud,(x_coord-cloud_w),(y_coord-cloud_h),cloud_w,cloud_h,GxEPD_BLACK); // Single cloud icon
@@ -77,11 +76,11 @@ void showWeatherIcon(){
   }
   else if(iconID.equals("10")){
     display.drawBitmap(rain,(x_coord-rain_w),(y_coord-rain_h),rain_w,rain_h,GxEPD_BLACK); // lighter rain with sun
-//    display.drawBitmap(redrain,(x_coord-rain_w),(y_coord-rain_h),rain_w,rain_h,GxEPD_RED);
+    display.drawBitmap(redrain,(x_coord-rain_w),(y_coord-rain_h),rain_w,rain_h,GxEPD_RED, GxEPD::bm_transparent);
   }
   else if(iconID.equals("11")){
     display.drawBitmap(thunder,(x_coord-thunder_w),(y_coord-thunder_h),thunder_w,thunder_h,GxEPD_BLACK); // thunderstorm
-    display.drawBitmap(redthunder,(x_coord-thunder_w),(y_coord-thunder_h),thunder_w,thunder_h,GxEPD_RED);
+    display.drawBitmap(redthunder,(x_coord-thunder_w),(y_coord-thunder_h),thunder_w,thunder_h,GxEPD_RED, GxEPD::bm_transparent);
   }
   else if(iconID.equals("13")){
     display.drawBitmap(snow,(x_coord-snow_w),(y_coord-snow_h),snow_w,snow_h,GxEPD_BLACK);// Snow

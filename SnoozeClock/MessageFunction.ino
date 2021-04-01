@@ -4,7 +4,9 @@
 BLYNK_WRITE(V1){
   
   digitalWrite(inbox, HIGH); // Turn on the indicator lights (unread message)
+//  digitalWrite(onboard, HIGH);
   led1.on(); 
+  
 
   // TODO: Send new message notification if on Clock screen (S0)
   addMessage(param.asStr()); // Add message to messages array

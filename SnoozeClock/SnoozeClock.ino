@@ -19,6 +19,7 @@
 // GPIO Pins
 #define nightLight 35 // night LED to light screen
 #define inbox 23 // Message received indicator LED
+#define onboard 2 // System LED
 #define back 22 // Alarm/back button
 #define confirm 21 // Messages/forward/confirm
 #define rot1 32 // Rotary dial pins
@@ -39,8 +40,8 @@ long epochTime;
 // OpenWeather Variables
 String openWeatherMapApiKey = "4428b3a249626b07f1a2769374ecf1ce";
 String cityID = "4671654"; // Austin
-String lon = "-97.7431";
-String lat = "30.2672";
+String lon = "-97.7392";
+String lat = "30.2856";
 String exclude = "minutely,daily";
 String jsonBuffer; 
 String temp = "--"; // global store of weather as String
@@ -104,40 +105,20 @@ BlynkTimer timer;
 
 // Sync device state with server
 BLYNK_CONNECTED() {
-  Blynk.syncVirtual(V6, V7);
-}
-
-// Restore alarm clock settings
-BLYNK_WRITE(V6) {
-  alarmHr = param[0].asInt();
-  alarmMin = param[1].asInt();
-  // Backup alarm day settings
-  for(int i=0; i<7; i++){
-    alarmDays[i] = param[i+2].asInt();
-  }
-  alarmSet = param[9].asInt();
-}
-
-// Restore last 10 messages from Blynk server
-BLYNK_WRITE(V7) {
-  Serial.println("Writing to messages backup");
-  for (int j = 0; j < MAX_MESSAGES ; j++) {
-    messages[j] = param[j].asStr();
-    Serial.println(messages[j]);
-  }
+  Blynk.syncVirtual(V2,V6, V7);
 }
 
 void pressBack() {
   interacted = true;
   backChange = true; // Mark pin value changed
-  checkNightLight();
+  if(isNight()) digitalWrite(nightLight, HIGH);
 }
 
 // Confirm switch is connected to rotary encoder
 void pressConfirm() {
   interacted = true;
   confirmChange = true; // Mark pin value changed
-  checkNightLight();
+  if(isNight()) digitalWrite(nightLight, HIGH);
 }
 
 void scrollWheel() {
@@ -171,14 +152,17 @@ void scrollWheel() {
   }
   
   rotState = newState; // scrollChange has been adjusted, state updates  
-  checkNightLight();
+  if(isNight()) digitalWrite(nightLight, HIGH);
 }
 
-void checkNightLight(){
-  long offset = 86400; // 60*60*24 approx. seconds in a day
-  // if current time is between sunset and sunrise of coming day, turn the screen light on
-  if((sunset < epochTime) && ((sunrise + offset) > epochTime)){
-     digitalWrite(nightLight, HIGH);
+bool isNight(){
+  if((sunset < epochTime) || (sunrise > epochTime)){
+     digitalWrite(onboard, HIGH); 
+     return true;
+  }
+  else{
+    digitalWrite(onboard, LOW); // It is daytime
+    return false;
   }
 }
 
@@ -204,6 +188,10 @@ void updateClock() {
     Serial.println("Failed to obtain time");
     return;
   }
+  if (isNight()){
+    // Change the system colors to night mode
+  }
+  
   if (timeinfo.tm_min != minutes && currentState == 0) {
     minutes = timeinfo.tm_min;
     clockDisplay(); // Update clock display
@@ -213,6 +201,12 @@ void updateClock() {
 // ISR: OpenWeather HTTP request
 // Sends HTTP request, parses JSON, stores relevant weather info
 void getWeather(){
+  if(WiFi.status() != WL_CONNECTED){
+    temp = "--";
+    precip = "--";
+    return;
+  }
+  
   String serverPath = "https://api.openweathermap.org/data/2.5/onecall?lat="+lat+"&lon="+lon+"&units=imperial&appid="+openWeatherMapApiKey;
   jsonBuffer = httpGETRequest(serverPath.c_str());  
   JSONVar myObject = JSON.parse(jsonBuffer);
@@ -230,8 +224,8 @@ void getWeather(){
   precip = String(int(precipRead));
   iconID = (JSON.stringify(myObject["hourly"][0]["weather"][0]["icon"])).substring(1,3); // Get ID of weather icon
   Serial.println("ICON: " + iconID);
-  sunrise = long(myObject["sys"]["sunrise"]);
-  sunset = long(myObject["sys"]["sunset"]);
+  sunrise = long(myObject["current"]["sunrise"]);
+  sunset = long(myObject["current"]["sunset"]);
 
   // National weather alerts and warnings
   if(myObject.hasOwnProperty("alert") && !seenAlert){
@@ -254,14 +248,15 @@ void setup() {
   sntp_set_sync_mode(SNTP_SYNC_MODE_SMOOTH); // Smooth readjustment of system time with NTP
   configTime(cstOffset_sec, daylightOffset_sec, ntpServer); //init and get the time
   getLocalTime(&timeinfo); 
-  
   getWeather();
 
   pinMode(inbox, OUTPUT); // Notification light
-  digitalWrite(inbox, LOW);
+//  digitalWrite(inbox, LOW);
+  pinMode(onboard, OUTPUT);
+  digitalWrite(onboard, LOW);
   pinMode(nightLight, OUTPUT);
   digitalWrite(nightLight, LOW);
-  led1.off();
+  
   pinMode(back, INPUT);
   pinMode(confirm, INPUT);
   pinMode(rot1, INPUT);
@@ -294,6 +289,7 @@ void setup() {
   /* DISPLAY INITIALIZING */
   display.init(115200); // enable diagnostic output on Serial
   display.setRotation(1);
+  display.invertDisplay(true);
   clockDisplay();
 
   Serial.print("Setup on core ");

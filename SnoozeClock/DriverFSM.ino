@@ -33,6 +33,7 @@ void stateChange(){
       // TODO: Show messages GUI
 
       digitalWrite(inbox, LOW); // Messages seen
+//      digitalWrite(onboard, LOW);
       led1.off(); 
       
       if(backChange && !confirmChange){

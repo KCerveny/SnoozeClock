@@ -1,3 +1,23 @@
+// Restore alarm clock settings
+BLYNK_WRITE(V6) {
+  alarmHr = param[0].asInt();
+  alarmMin = param[1].asInt();
+  // Backup alarm day settings
+  for(int i=0; i<7; i++){
+    alarmDays[i] = param[i+2].asInt();
+  }
+  alarmSet = param[9].asInt();
+}
+
+// Restore last 10 messages from Blynk server
+BLYNK_WRITE(V7) {
+  Serial.println("Writing to messages backup");
+  for (int j = 0; j < MAX_MESSAGES ; j++) {
+    messages[j] = param[j].asStr();
+    Serial.println(messages[j]);
+  }
+}
+
 // Timer ISR: If time == alarm time, ring
 void ringAlarm(){  
   // if hr, min, and date line up, playback ring
