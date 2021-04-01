@@ -26,9 +26,10 @@ void clockDisplay() {
   
   // Display weatherIcons
   display.setTextColor(GxEPD_RED);
-  display.print(temp+"*F"); 
+  display.print(temp+"*F "); 
+  display.setTextColor(GxEPD_BLACK);
+  display.print(precip+"%");
 //  display.drawBitmap(gridicons_ink, display.getCursorX()+3, display.getCursorY()-3, 24, 24, GxEPD_BLACK);
-//  display.print(perspiration+"%"); // Need to find API call for weather forecast
   
   showWeatherIcon();
 

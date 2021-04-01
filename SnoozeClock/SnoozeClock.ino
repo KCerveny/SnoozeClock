@@ -1,5 +1,5 @@
 #define BLYNK_PRINT Serial /* TODO: delete this line to increase processing */
-#define BLYNK_HEARTBEAT 20
+#define BLYNK_HEARTBEAT 30
 
 #include <SPI.h>
 #include <HTTPClient.h>
@@ -30,8 +30,8 @@ GxEPD_Class display(io, /*RST=*/ 16, /*BUSY=*/ 4); // arbitrary selection of (16
 
 // UTP Variables
 const char* ntpServer = "pool.ntp.org";
-const long  cstOffset_sec = -21600;
-const int   daylightOffset_sec = 3600;
+const long  cstOffset_sec = -21600; // time zone
+const int   daylightOffset_sec = 3600; // daylight savings hour
 struct tm timeinfo; // Holds searched time results
 byte minutes; // Holds current minute value for clock display
 long epochTime; 
@@ -39,10 +39,14 @@ long epochTime;
 // OpenWeather Variables
 String openWeatherMapApiKey = "4428b3a249626b07f1a2769374ecf1ce";
 String cityID = "4671654"; // Austin
-String units = "imperial";
+String lon = "-97.7431";
+String lat = "30.2672";
+String exclude = "minutely,daily";
 String jsonBuffer; 
 String temp = "--"; // global store of weather as String
+String precip = "--%";
 String iconID; // Code for OpenWeather icon to display
+bool seenAlert = false;
 long sunrise; 
 long sunset; 
 
@@ -195,9 +199,7 @@ void noInteract() {
 // ISR to update clock time, sync with server
 // Updates display if showing clock screen
 void updateClock() {
-  // TODO: maintain internal time if not connected?
   time(&epochTime); // Get Unix time in seconds
-  
   if (!getLocalTime(&timeinfo)) {
     Serial.println("Failed to obtain time");
     return;
@@ -211,34 +213,48 @@ void updateClock() {
 // ISR: OpenWeather HTTP request
 // Sends HTTP request, parses JSON, stores relevant weather info
 void getWeather(){
-  String serverPath = "http://api.openweathermap.org/data/2.5/weather?id=" + cityID + "&appid=" + openWeatherMapApiKey+"&units="+units;
-  jsonBuffer = httpGETRequest(serverPath.c_str());
-  Serial.println(jsonBuffer);
-  
+  String serverPath = "https://api.openweathermap.org/data/2.5/onecall?lat="+lat+"&lon="+lon+"&units=imperial&appid="+openWeatherMapApiKey;
+  jsonBuffer = httpGETRequest(serverPath.c_str());  
   JSONVar myObject = JSON.parse(jsonBuffer);
   
   // JSON.typeof(jsonVar) can be used to get the type of the var
   if (JSON.typeof(myObject) == "undefined") {
     Serial.println("Parsing input failed!");
     temp = "--";
+    precip = "--";
     return;
   }
-  double tempRead = round(double(myObject["main"]["temp"]));
+  double tempRead = round(double(myObject["current"]["temp"]));
   temp = String(int(tempRead)); // Round, truncate decimal, convert to string
-  iconID = (JSON.stringify(myObject["weather"][0]["icon"])).substring(1,3); // Get ID of weather icon
+  double precipRead = round(double(myObject["hourly"][0]["pop"])); 
+  precip = String(int(precipRead));
+  iconID = (JSON.stringify(myObject["hourly"][0]["weather"][0]["icon"])).substring(1,3); // Get ID of weather icon
   Serial.println("ICON: " + iconID);
   sunrise = long(myObject["sys"]["sunrise"]);
   sunset = long(myObject["sys"]["sunset"]);
+
+  // National weather alerts and warnings
+  if(myObject.hasOwnProperty("alert") && !seenAlert){
+    seenAlert = true;
+    Serial.println("National Weather Alert!");
+    String alert = JSON.stringify(myObject["alert"]["sender_name"]) +": "+ JSON.stringify(myObject["alert"]["event"]);
+    addMessage(alert); // Weather alert will show up in inbox
+  }
+  else if(!myObject.hasOwnProperty("alert") && seenAlert){
+    seenAlert = false; // We can set flag to false now that the alert is over
+  }
 }
 
 // ************************************* MAIN DRIVER FUNCTIONS **********************************
 
 void setup() {
-
   Serial.begin(115200);
   Blynk.begin(auth, ssid, pass);
+
+  sntp_set_sync_mode(SNTP_SYNC_MODE_SMOOTH); // Smooth readjustment of system time with NTP
   configTime(cstOffset_sec, daylightOffset_sec, ntpServer); //init and get the time
   getLocalTime(&timeinfo); 
+  
   getWeather();
 
   pinMode(inbox, OUTPUT); // Notification light
@@ -280,16 +296,19 @@ void setup() {
   display.setRotation(1);
   clockDisplay();
 
+  Serial.print("Setup on core ");
+  Serial.println(xPortGetCoreID());
+
   /* SECOND CORE RUNS SOUND TASKS */
-  xTaskCreatePinnedToCore(
-                    alarmSound,   /* Task function. */
-                    "alarmSound",     /* name of task. */
-                    10000,       /* Stack size of task */
-                    NULL,        /* parameter of the task */
-                    1,           /* priority of the task */
-                    &Task1,      /* Task handle to keep track of created task */
-                    0);          /* pin task to core 0 */
-  delay(500);
+//  xTaskCreatePinnedToCore(
+//                    alarmSound,   /* Task function. */
+//                    "alarmSound",     /* name of task. */
+//                    10000,       /* Stack size of task */
+//                    NULL,        /* parameter of the task */
+//                    1,           /* priority of the task */
+//                    &Task1,      /* Task handle to keep track of created task */
+//                    0);          /* pin task to core 0 */
+//  delay(500);
 
   // This will print Blynk Software version to the Terminal Widget when
   // your hardware gets connected to Blynk Server
