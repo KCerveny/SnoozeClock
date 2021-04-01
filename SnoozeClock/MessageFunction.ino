@@ -2,18 +2,14 @@
 
 // Process message from terminal in Blynk App
 BLYNK_WRITE(V1){
-  
   digitalWrite(inbox, HIGH); // Turn on the indicator lights (unread message)
 //  digitalWrite(onboard, HIGH);
   led1.on(); 
-  
 
-  // TODO: Send new message notification if on Clock screen (S0)
   addMessage(param.asStr()); // Add message to messages array
-
-  // Auto-refresh if on messages page
+  
   if(currentState == 1){
-    messagesOverview(); 
+    messagesOverview(); // Auto-refresh if on messages page
   }
 }
 

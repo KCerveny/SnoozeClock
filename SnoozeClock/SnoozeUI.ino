@@ -10,10 +10,6 @@
 
 // State 0
 void clockDisplay() {
-  // if date or hour change, full refresh
-  // unread message: display message notification
-  // Partial update for minutes change?
-
   display.fillScreen(GxEPD_WHITE);
   display.setTextColor(GxEPD_RED);
   display.setFont(&LexendMega_Regular9pt7b);
@@ -27,7 +23,7 @@ void clockDisplay() {
   // Display weatherIcons
   display.setTextColor(GxEPD_BLACK);
   display.print(temp+"*F "); 
-  display.drawBitmap(gridicons_ink, display.getCursorX(), display.getCursorY()-16, 14, 19, GxEPD_BLACK, GxEPD::bm_transparent);
+  display.drawBitmap(gridicons_ink, display.getCursorX(), display.getCursorY()-15, 14, 16, GxEPD_BLACK, GxEPD::bm_transparent);
   display.setCursor(display.getCursorX()+14+3 , display.getCursorY());
   display.print(precip+"%");
   showWeatherIcon();
@@ -37,7 +33,7 @@ void clockDisplay() {
     display.drawBitmap(gridicons_bell, 272, 0, 24, 24, GxEPD_BLACK);
   }
   if(digitalRead(onboard) == HIGH){
-    display.drawBitmap(gridicons_mail, 272-24-3, 0, 24, 24, GxEPD_RED);
+    display.drawBitmap(gridicons_mail, 272-24-3, 0, 24, 24, GxEPD_RED, GxEPD::bm_transparent);
   }
   
   

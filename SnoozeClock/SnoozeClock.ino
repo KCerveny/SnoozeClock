@@ -29,13 +29,23 @@
 GxIO_Class io(SPI, /*CS=5*/ SS, /*DC=*/ 17, /*RST=*/ 16); // arbitrary selection of 17, 16
 GxEPD_Class display(io, /*RST=*/ 16, /*BUSY=*/ 4); // arbitrary selection of (16), 
 
+//UI Variables
+uint16_t systemColor = GxEPD_BLACK; 
+/* System Color:
+ * - background fill color must change
+ * - black bitmaps mode: bm_invert
+ * - black text to white
+ */
+
+
+
 // UTP Variables
 const char* ntpServer = "pool.ntp.org";
 const long  cstOffset_sec = -21600; // time zone
 const int   daylightOffset_sec = 3600; // daylight savings hour
 struct tm timeinfo; // Holds searched time results
 byte minutes; // Holds current minute value for clock display
-long epochTime; 
+//long epochTime; 
 
 // OpenWeather Variables
 String openWeatherMapApiKey = "4428b3a249626b07f1a2769374ecf1ce";
@@ -156,6 +166,7 @@ void scrollWheel() {
 }
 
 bool isNight(){
+  long epochTime = mktime(&timeinfo);
   if((sunset < epochTime) || (sunrise > epochTime)){
      digitalWrite(onboard, HIGH); 
      return true;
@@ -172,7 +183,7 @@ void noInteract() {
   if (interacted == false && currentState != 0) {
     currentState = 0; // Adjust FSM for UI purposes
     nextState = 0;
-    Serial.print("Back to 0: ");
+    Serial.print("No Interaction: back to State 0");
     Serial.println(nextState);
     digitalWrite(nightLight, LOW); // Turn off light if not touched
     clockDisplay();
@@ -183,7 +194,6 @@ void noInteract() {
 // ISR to update clock time, sync with server
 // Updates display if showing clock screen
 void updateClock() {
-  time(&epochTime); // Get Unix time in seconds
   if (!getLocalTime(&timeinfo)) {
     Serial.println("Failed to obtain time");
     return;
