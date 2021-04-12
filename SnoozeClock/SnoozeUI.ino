@@ -23,8 +23,8 @@ void clockDisplay() {
   // Display weatherIcons
   display.setTextColor(GxEPD_BLACK);
   display.print(temp+"*F "); 
-  display.drawBitmap(gridicons_ink, display.getCursorX(), display.getCursorY()-15, 14, 16, GxEPD_BLACK, GxEPD::bm_transparent);
-  display.setCursor(display.getCursorX()+14+3 , display.getCursorY());
+  display.drawBitmap(gridicons_ink, display.getCursorX(), display.getCursorY()-15, 14, 18, GxEPD_BLACK, GxEPD::bm_transparent);
+  display.setCursor(display.getCursorX()+12+3 , display.getCursorY());
   display.print(precip+"%");
   showWeatherIcon();
 
@@ -35,7 +35,6 @@ void clockDisplay() {
   if(digitalRead(onboard) == HIGH){
     display.drawBitmap(gridicons_mail, 272-24-3, 0, 24, 24, GxEPD_RED, GxEPD::bm_transparent);
   }
-  
   
   // Display the current time
   display.setFont(&LexendMega_Regular36pt7b);
@@ -247,4 +246,39 @@ void setAlarmScreen() {
   display.fillRect(0, 100, 40, 3, GxEPD_BLACK); // Underline to indicate setting alarm on/off
   display.update();
 
+}
+
+// Setting Up Location Services
+void systemBootScreen() {
+  display.fillScreen(GxEPD_WHITE);
+  display.setTextColor(GxEPD_BLACK);
+  display.setFont(&LexendMega_Regular9pt7b);
+  display.setCursor(0, 15); 
+  display.println("Connecting to Wireless");
+  display.println("Finding Location..."); 
+  display.println("This may take up to 30 seconds");
+
+  display.update();
+}
+
+void sysBootStatusScreen() {
+  display.fillScreen(GxEPD_WHITE);
+  display.setTextColor(GxEPD_BLACK);
+  display.setFont(&LexendMega_Regular9pt7b);
+  display.setCursor(0, 15); 
+ 
+  if(clockLocation.foundLoc == true){
+    display.println("Location Acquired!");
+    
+    display.print(" - Latitude: "); display.println(clockLocation.lat);
+    display.print(" - Longitude: "); display.println(clockLocation.lon);
+    display.print(" - Accuracy: "); display.println(clockLocation.acc); 
+    display.println(clockLocation.city + ", " + clockLocation.country);
+    display.println("Welcome :)");
+  }
+  else{
+    display.println("Location not found."); 
+    display.println("Default to Austin, TX");
+  }
+  display.update();
 }

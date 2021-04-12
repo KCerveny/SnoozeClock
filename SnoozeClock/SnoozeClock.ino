@@ -1,4 +1,5 @@
-#define BLYNK_PRINT Serial /* TODO: delete this line to increase processing */
+// #define BLYNK_PRINT Serial /* TODO: delete this line to increase processing */
+#define SERIAL_DEBUGGING
 #define BLYNK_HEARTBEAT 30
 
 #include <SPI.h>
@@ -37,21 +38,33 @@ uint16_t systemColor = GxEPD_BLACK;
  * - black text to white
  */
 
+// Geolocation Variables
+String googleApiKey = "AIzaSyATHJVr_jm1ZXj-QLr_OhEfc-v4JIYaheE";
 
+typedef struct cl{
+  String lon = "-97.7392";
+  String lat = "30.2856";
+  String acc = "";
+  String city = "Austin";
+  String country = "US"; 
+  long tzSec = -18000;
+  bool foundLoc = false;
+} clkloc_t;
+
+struct cl clockLocation; 
 
 // UTP Variables
 const char* ntpServer = "pool.ntp.org";
-const long  cstOffset_sec = -21600; // time zone
-const int   daylightOffset_sec = 3600; // daylight savings hour
+long  cstOffset_sec; // time zone
+int daylightOffset_sec = 0; // daylight savings hour
 struct tm timeinfo; // Holds searched time results
 byte minutes; // Holds current minute value for clock display
 //long epochTime; 
 
 // OpenWeather Variables
 String openWeatherMapApiKey = "4428b3a249626b07f1a2769374ecf1ce";
-String cityID = "4671654"; // Austin
-String lon = "-97.7392";
-String lat = "30.2856";
+String lon; //= "-97.7392";
+String lat; //= "30.2856";
 String exclude = "minutely,daily";
 String jsonBuffer; 
 String temp = "--"; // global store of weather as String
@@ -208,57 +221,33 @@ void updateClock() {
   }
 }
 
-// ISR: OpenWeather HTTP request
-// Sends HTTP request, parses JSON, stores relevant weather info
-void getWeather(){
-  if(WiFi.status() != WL_CONNECTED){
-    temp = "--";
-    precip = "--";
-    return;
-  }
-  
-  String serverPath = "https://api.openweathermap.org/data/2.5/onecall?lat="+lat+"&lon="+lon+"&units=imperial&appid="+openWeatherMapApiKey;
-  jsonBuffer = httpGETRequest(serverPath.c_str());  
-  JSONVar myObject = JSON.parse(jsonBuffer);
-  
-  // JSON.typeof(jsonVar) can be used to get the type of the var
-  if (JSON.typeof(myObject) == "undefined") {
-    Serial.println("Parsing input failed!");
-    temp = "--";
-    precip = "--";
-    return;
-  }
-  double tempRead = round(double(myObject["current"]["temp"]));
-  temp = String(int(tempRead)); // Round, truncate decimal, convert to string
-  double precipRead = round(double(myObject["hourly"][0]["pop"])); 
-  precip = String(int(precipRead));
-  iconID = (JSON.stringify(myObject["hourly"][0]["weather"][0]["icon"])).substring(1,3); // Get ID of weather icon
-  Serial.println("ICON: " + iconID);
-  sunrise = long(myObject["current"]["sunrise"]);
-  sunset = long(myObject["current"]["sunset"]);
-
-  // National weather alerts and warnings
-  if(myObject.hasOwnProperty("alert") && !seenAlert){
-    seenAlert = true;
-    Serial.println("National Weather Alert!");
-    String alert = JSON.stringify(myObject["alert"]["sender_name"]) +": "+ JSON.stringify(myObject["alert"]["event"]);
-    addMessage(alert); // Weather alert will show up in inbox
-  }
-  else if(!myObject.hasOwnProperty("alert") && seenAlert){
-    seenAlert = false; // We can set flag to false now that the alert is over
-  }
-}
-
 // ************************************* MAIN DRIVER FUNCTIONS **********************************
 
 void setup() {
   Serial.begin(115200);
-  Blynk.begin(auth, ssid, pass);
 
+  /* DISPLAY INITIALIZING */
+  display.init(115200); // enable diagnostic output on Serial
+  display.setRotation(1);
+  display.invertDisplay(true);
+
+//  wifiProvision();
+
+  /* Init Wireless and Location Services */
+  systemBootScreen();
+  getCoords(); // Calls Google Geolocation API
+  if(clockLocation.foundLoc == false){
+    getCoords; // Attempt once more before default location
+  }
+  
+  Blynk.begin(auth, ssid, pass);
+  locationStatus();
   sntp_set_sync_mode(SNTP_SYNC_MODE_SMOOTH); // Smooth readjustment of system time with NTP
-  configTime(cstOffset_sec, daylightOffset_sec, ntpServer); //init and get the time
+  configTime(clockLocation.tzSec, 0, ntpServer); //init and get the time
   getLocalTime(&timeinfo); 
   getWeather();
+  /* End Location Setup */
+  sysBootStatusScreen();
 
   pinMode(inbox, OUTPUT); // Notification light
 //  digitalWrite(inbox, LOW);
@@ -296,10 +285,6 @@ void setup() {
   timer.setInterval(20000L, ringAlarm); // Each 20 secs, check if alarm needs to ring
   timer.setInterval(300000L, getWeather); // Retrieve current weather every 5 mins
 
-  /* DISPLAY INITIALIZING */
-  display.init(115200); // enable diagnostic output on Serial
-  display.setRotation(1);
-  display.invertDisplay(true);
   clockDisplay();
 
   Serial.print("Setup on core ");
@@ -333,4 +318,35 @@ void setup() {
 void loop() {
   Blynk.run();
   timer.run();
+}
+
+void wifiProvision(){
+    //Init WiFi as Station, start SmartConfig
+  WiFi.mode(WIFI_AP_STA);
+  // Define config mode?
+  WiFi.beginSmartConfig();
+
+  //Wait for SmartConfig packet from mobile
+  Serial.println("Waiting for SmartConfig.");
+  while (!WiFi.smartConfigDone()) {
+    delay(500);
+    Serial.print(".");
+  }
+  
+  #ifdef SERIAL_DEBUGGING
+  Serial.println("\nSmartConfig received.");
+  #endif
+
+  //Wait for WiFi to connect to AP
+  Serial.println("Waiting for WiFi");
+  while (WiFi.status() != WL_CONNECTED) {
+    delay(500);
+    Serial.print(".");
+  }
+
+  #ifdef SERIAL_DEBUGGING
+  Serial.println("\nWiFi Connected.");
+  Serial.print("IP Address: ");
+  Serial.println(WiFi.localIP());
+  #endif
 }
