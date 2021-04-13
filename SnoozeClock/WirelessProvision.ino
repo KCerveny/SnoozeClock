@@ -1,7 +1,8 @@
 
 void wifiProvision() {
-  unsigned long timeout = 60*1000; // One minute
+  unsigned long timeout = 5000; // One minute
   WiFiMulti wfmulti; 
+  Serial.println("Provisioning Wifi"); 
   preferences.begin("connections", false);
   unsigned int numConnections = preferences.getUInt("count", 0);
   
@@ -9,15 +10,18 @@ void wifiProvision() {
     smartConfig(); // We need to set up a connection
   }
 
-  for(unsigned int i=0; i < numConnections; i++){
-    String net = "conn" + i; 
-    String pas = "pass" + i; 
+  for(int i=1; i < numConnections+1; i++){
+    String net = "conn"; net.concat(i); 
+    String pas = "pass"; pas.concat(i);
+    Serial.println("Retreiving: " + net + " " + pas);
     String APssid = preferences.getString(const_cast<char*>(net.c_str())); 
-    String APpsk = preferences.getString(const_cast<char*>(temp.c_str()));
-    
+    String APpsk = preferences.getString(const_cast<char*>(pas.c_str()));
+    Serial.print(i);
+    Serial.println(". SSID: " + APssid + ", Pass: " + APpsk);
     wfmulti.addAP(const_cast<char*>(APssid.c_str()), const_cast<char*>(APssid.c_str())); 
   }
-
+  preferences.end();
+  
   if(wfmulti.run(timeout) == WL_CONNECTED) {
       Serial.println("");
       Serial.println("WiFi connected");
@@ -72,9 +76,11 @@ void smartConfig(){
     
     String newSSID = WiFi.SSID();
     String newPass = WiFi.psk(); 
+    Serial.println("New: " + newSSID + ", " + newPass); 
 
-    String net = "conn" + num; 
-    String pas = "pass" + num; 
+    String net = "conn"; net.concat(num); 
+    String pas = "pass"; pas.concat(num); 
+    Serial.print("Spaces: " + net + ", " + pas); 
     preferences.putString(const_cast<char*>(net.c_str()), newSSID); // Store new connection and password in non-volatile
     preferences.putString(const_cast<char*>(pas.c_str()), newPass); 
     
