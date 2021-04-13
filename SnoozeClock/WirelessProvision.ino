@@ -3,7 +3,7 @@ void wifiProvision() {
   unsigned long timeout = 5000; // One minute
   WiFiMulti wfmulti; 
   Serial.println("Provisioning Wifi"); 
-  preferences.begin("connections", false);
+  preferences.begin("conns", false);
   unsigned int numConnections = preferences.getUInt("count", 0);
   
   if(numConnections == 0){
@@ -13,22 +13,28 @@ void wifiProvision() {
   for(int i=1; i < numConnections+1; i++){
     String net = "conn"; net.concat(i); 
     String pas = "pass"; pas.concat(i);
-    Serial.println("Retreiving: " + net + " " + pas);
+
+    #ifdef SERIAL_DEBUGGING
     String APssid = preferences.getString(const_cast<char*>(net.c_str())); 
     String APpsk = preferences.getString(const_cast<char*>(pas.c_str()));
+    #endif
+    
     Serial.print(i);
     Serial.println(". SSID: " + APssid + ", Pass: " + APpsk);
-    wfmulti.addAP(const_cast<char*>(APssid.c_str()), const_cast<char*>(APssid.c_str())); 
+    wfmulti.addAP(const_cast<char*>(APssid.c_str()), const_cast<char*>(APpsk.c_str())); 
   }
   preferences.end();
   
   if(wfmulti.run(timeout) == WL_CONNECTED) {
-      Serial.println("");
-      Serial.println("WiFi connected");
+      #ifdef SERIAL_DEBUGGING
+      Serial.println("\nWiFi connected");
       Serial.println("IP address: ");
       Serial.println(WiFi.localIP());
+      #endif
+      
       getWifi.ssid = WiFi.SSID();
       getWifi.pass = WiFi.psk();
+      WiFi.disconnect(); // Revert to AP mode
   }
   else{
      smartConfig(); // We need to add a new connection
@@ -37,7 +43,10 @@ void wifiProvision() {
 
 
 void smartConfig(){
-    //Init WiFi as Station, start SmartConfig
+
+  // TODO: Display notice + QR code for smartConfig option
+  
+  //Init WiFi as Station, start SmartConfig
   WiFi.mode(WIFI_AP_STA);
   // Define config mode?
   WiFi.beginSmartConfig();
@@ -69,18 +78,20 @@ void smartConfig(){
   #endif
 
   if(WiFi.status() == WL_CONNECTED){
-    preferences.begin("connections", false); // Begin non-volatile storage
+    preferences.begin("conns", false); // Begin non-volatile storage
     unsigned int num = preferences.getUInt("count", 0); 
     num ++; 
     preferences.putUInt("count", num); // We have a new connection
     
     String newSSID = WiFi.SSID();
-    String newPass = WiFi.psk(); 
+    String newPass = WiFi.psk(); ]
+
+    #ifdef SERIAL_DEBUGGING
     Serial.println("New: " + newSSID + ", " + newPass); 
+    #endif
 
     String net = "conn"; net.concat(num); 
-    String pas = "pass"; pas.concat(num); 
-    Serial.print("Spaces: " + net + ", " + pas); 
+    String pas = "pass"; pas.concat(num);  
     preferences.putString(const_cast<char*>(net.c_str()), newSSID); // Store new connection and password in non-volatile
     preferences.putString(const_cast<char*>(pas.c_str()), newPass); 
     
