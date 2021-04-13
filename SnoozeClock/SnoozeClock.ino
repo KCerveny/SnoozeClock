@@ -10,6 +10,9 @@
 #include <Arduino_JSON.h>
 #include <BlynkSimpleEsp32.h>
 #include "time.h"
+#include <Preferences.h>
+#include <WiFiMulti.h>
+
 
 // DISPLAY LIBS
 #include <GxEPD.h>
@@ -91,9 +94,17 @@ bool alarmDays[7] = {1, 1, 1, 1, 1, 1, 1}; // Index represents days since Sunday
 volatile bool isRinging; // FSM button override
 
 // Connectivity Credentials
+Preferences preferences;
 char auth[] = "HVMVCQ6T1ie1ER0uix-iNEZelEf7N82z"; // You should get Auth Token in the Blynk App.
 char ssid[] = "SpicySchemeTeam"; // WiFi credentials.
 char pass[] = "spicybrainthot"; // Set password to "" for open networks.
+
+struct wf{
+  String ssid;
+  String pass; 
+};
+
+struct wf getWifi;
 
 // Messages Variables
 #define MAX_MESSAGES 10
@@ -231,7 +242,7 @@ void setup() {
   display.setRotation(1);
   display.invertDisplay(true);
 
-//  wifiProvision();
+  wifiProvision();
 
   /* Init Wireless and Location Services */
   systemBootScreen();
@@ -240,7 +251,7 @@ void setup() {
     getCoords; // Attempt once more before default location
   }
   
-  Blynk.begin(auth, ssid, pass);
+  Blynk.begin(auth, (getWifi.ssid).c_str(), (getWifi.pass).c_str());
   locationStatus();
   sntp_set_sync_mode(SNTP_SYNC_MODE_SMOOTH); // Smooth readjustment of system time with NTP
   configTime(clockLocation.tzSec, 0, ntpServer); //init and get the time
@@ -318,35 +329,4 @@ void setup() {
 void loop() {
   Blynk.run();
   timer.run();
-}
-
-void wifiProvision(){
-    //Init WiFi as Station, start SmartConfig
-  WiFi.mode(WIFI_AP_STA);
-  // Define config mode?
-  WiFi.beginSmartConfig();
-
-  //Wait for SmartConfig packet from mobile
-  Serial.println("Waiting for SmartConfig.");
-  while (!WiFi.smartConfigDone()) {
-    delay(500);
-    Serial.print(".");
-  }
-  
-  #ifdef SERIAL_DEBUGGING
-  Serial.println("\nSmartConfig received.");
-  #endif
-
-  //Wait for WiFi to connect to AP
-  Serial.println("Waiting for WiFi");
-  while (WiFi.status() != WL_CONNECTED) {
-    delay(500);
-    Serial.print(".");
-  }
-
-  #ifdef SERIAL_DEBUGGING
-  Serial.println("\nWiFi Connected.");
-  Serial.print("IP Address: ");
-  Serial.println(WiFi.localIP());
-  #endif
 }
