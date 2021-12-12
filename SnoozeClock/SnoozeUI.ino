@@ -1,3 +1,12 @@
+#include <SPI.h>
+
+// DISPLAY LIBS
+#include <GxEPD.h>
+#include <GxGDEW029Z10/GxGDEW029Z10.h> // 2.9" b/w/r
+#include <GxIO/GxIO_SPI/GxIO_SPI.h>
+#include <GxIO/GxIO.h>
+
+// Included icon and font headers
 #include "Fonts/LexendMega_Regular9pt7b.h"
 #include "Fonts/LexendMega_Regular12pt7b.h"
 #include "Fonts/LexendMega_Regular18pt7b.h"
@@ -7,6 +16,28 @@
 #include "Fonts/LexendMega_Regular36pt7b.h"
 #include "weatherIcons.h"
 #include "miscIcons.h"
+
+
+// EInk Object initialized
+GxIO_Class io(SPI, /*CS=5*/ SS, /*DC=*/ 17, /*RST=*/ 16); // arbitrary selection of 17, 16
+GxEPD_Class display(io, /*RST=*/ 16, /*BUSY=*/ 4); // arbitrary selection of (16), 
+
+//UI Variables
+uint16_t systemColor = GxEPD_BLACK; 
+/* System Color:
+ * - background fill color must change
+ * - black bitmaps mode: bm_invert
+ * - black text to white
+ */
+
+
+// Handles initialization of display functions
+void initDisplay(){
+  display.init(115200); // enable diagnostic output on Serial
+  display.setRotation(1);
+  display.invertDisplay(true);
+}
+
 
 // State 0
 void clockDisplay() {

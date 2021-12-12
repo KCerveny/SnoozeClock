@@ -1,8 +1,6 @@
 // #define BLYNK_PRINT Serial /* TODO: delete this line to increase processing */
 #define SERIAL_DEBUGGING
 #define BLYNK_HEARTBEAT 30
-
-#include <SPI.h>
 #include <HTTPClient.h>
 #include <WiFi.h>
 #include <WiFiClient.h>
@@ -14,32 +12,15 @@
 #include <WiFiMulti.h>
 
 
-// DISPLAY LIBS
-#include <GxEPD.h>
-#include <GxGDEW029Z10/GxGDEW029Z10.h> // 2.9" b/w/r
-#include <GxIO/GxIO_SPI/GxIO_SPI.h>
-#include <GxIO/GxIO.h>
-
 // GPIO Pins
 #define nightLight 35 // night LED to light screen
-#define inbox 23 // Message received indicator LED
+#define inbox 14 // Message received indicator LED
 #define onboard 2 // System LED
 #define back 22 // Alarm/back button
 #define confirm 21 // Messages/forward/confirm
 #define rot1 32 // Rotary dial pins
 #define rot2 33
-
-// EInk Object initialized
-GxIO_Class io(SPI, /*CS=5*/ SS, /*DC=*/ 17, /*RST=*/ 16); // arbitrary selection of 17, 16
-GxEPD_Class display(io, /*RST=*/ 16, /*BUSY=*/ 4); // arbitrary selection of (16), 
-
-//UI Variables
-uint16_t systemColor = GxEPD_BLACK; 
-/* System Color:
- * - background fill color must change
- * - black bitmaps mode: bm_invert
- * - black text to white
- */
+#define BUZZER 12
 
 // Geolocation Variables
 String googleApiKey = "AIzaSyATHJVr_jm1ZXj-QLr_OhEfc-v4JIYaheE";
@@ -62,7 +43,6 @@ long  cstOffset_sec; // time zone
 int daylightOffset_sec = 0; // daylight savings hour
 struct tm timeinfo; // Holds searched time results
 byte minutes; // Holds current minute value for clock display
-//long epochTime; 
 
 // OpenWeather Variables
 String openWeatherMapApiKey = "4428b3a249626b07f1a2769374ecf1ce";
@@ -82,8 +62,8 @@ TaskHandle_t Task1; // freeRTOS task kernel variable
 
 /* Used for setting alarm values */
 bool alarmSet = 1; // 1=true, 0=false (We use 1,0 to store in Blynk virtual pin)
-int alarmHr = 7;  // Hr and Min saved to servers on V6
-int alarmMin = 30;
+int alarmHr = 12;  // Hr and Min saved to servers on V6
+int alarmMin = 49;
 int alarmAMPM = 0; // 0=AM, 1=PM
 int alarmSchedule = 0; // 0: 7day, 1: wkdy, 2: wknd
 
@@ -237,19 +217,18 @@ void updateClock() {
 void setup() {
   Serial.begin(115200);
 
-  /* DISPLAY INITIALIZING */
-  display.init(115200); // enable diagnostic output on Serial
-  display.setRotation(1);
-  display.invertDisplay(true);
+  initDisplay();
 
-  wifiProvision();
+//  wifiProvision();
+  getWifi.ssid = ssid; 
+  getWifi.pass = pass;
 
   /* Init Wireless and Location Services */
-  systemBootScreen();
-  getCoords(); // Calls Google Geolocation API
-  if(clockLocation.foundLoc == false){
-    getCoords; // Attempt once more before default location
-  }
+//  systemBootScreen();
+//  getCoords(); // Calls Google Geolocation API
+//  if(clockLocation.foundLoc == false){
+//    getCoords; // Attempt once more before default location
+//  }
   
   Blynk.begin(auth, (getWifi.ssid).c_str(), (getWifi.pass).c_str());
   locationStatus();
@@ -276,8 +255,8 @@ void setup() {
   int rotary2 = digitalRead(rot2) ? 1 : 0;
   rotState = 2*rotary1 + rotary2; // Will yield 4 distinct states
 
-  pinMode(12, OUTPUT); // TESTING LED for alarm function
-  digitalWrite(12, LOW);
+  pinMode(BUZZER, OUTPUT); // TESTING LED for alarm function
+  digitalWrite(BUZZER, LOW);
   ringMin = alarmMin; // Set alarm to ring next at user-set time
   ringHr = alarmHr;
 
@@ -290,27 +269,14 @@ void setup() {
   attachInterrupt(digitalPinToInterrupt(rot1), scrollWheel, CHANGE); // Rotary dial lead 1
   attachInterrupt(digitalPinToInterrupt(rot2), scrollWheel, CHANGE); // Rotary dial lead 2
 
+  timer.setInterval(125L, alarmSound); // Handle the alarm buzzing sound
   timer.setInterval(200L, stateChange); // State Change check function
   timer.setInterval(1000L, updateClock); // Check clock time once per second
   timer.setInterval(10000L, noInteract); // If no interactions for 10 seconds, go back to clock (S0)
-  timer.setInterval(20000L, ringAlarm); // Each 20 secs, check if alarm needs to ring
+  timer.setInterval(20000L, activateAlarm); // Each 20 secs, check if alarm needs to ring
   timer.setInterval(300000L, getWeather); // Retrieve current weather every 5 mins
 
-  clockDisplay();
-
-  Serial.print("Setup on core ");
-  Serial.println(xPortGetCoreID());
-
-  /* SECOND CORE RUNS SOUND TASKS */
-//  xTaskCreatePinnedToCore(
-//                    alarmSound,   /* Task function. */
-//                    "alarmSound",     /* name of task. */
-//                    10000,       /* Stack size of task */
-//                    NULL,        /* parameter of the task */
-//                    1,           /* priority of the task */
-//                    &Task1,      /* Task handle to keep track of created task */
-//                    0);          /* pin task to core 0 */
-//  delay(500);
+  clockDisplay(); // Set first screen to the clock (home) screen
 
   // This will print Blynk Software version to the Terminal Widget when
   // your hardware gets connected to Blynk Server

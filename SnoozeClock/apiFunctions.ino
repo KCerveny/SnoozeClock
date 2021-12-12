@@ -26,7 +26,7 @@ String httpGETRequest(const char* serverName) {
 
 void getCoords(){
   WiFi.mode(WIFI_MODE_STA); // Set up device as WiFi station to find other devices
-  WiFi.begin(getWifi.ssid, getWifi.pass);
+  WiFi.begin(getWifi.ssid.c_str(), getWifi.pass.c_str() );
   Serial.print("Attempting to connect to WPA SSID: ");
   Serial.println(getWifi.ssid);
   while (WiFi.status() != WL_CONNECTED) {

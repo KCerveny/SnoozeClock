@@ -84,7 +84,7 @@ void smartConfig(){
     preferences.putUInt("count", num); // We have a new connection
     
     String newSSID = WiFi.SSID();
-    String newPass = WiFi.psk(); ]
+    String newPass = WiFi.psk();
 
     #ifdef SERIAL_DEBUGGING
     Serial.println("New: " + newSSID + ", " + newPass); 
