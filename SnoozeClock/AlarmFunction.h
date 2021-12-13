@@ -10,7 +10,8 @@ class AlarmFunction{
     volatile bool isRinging; // FSM button override
   
     AlarmFunction(int buzzerPin);
-    void activateAlarm(struct tm timeinfo);
+    bool checkAlarmTime(struct tm timeinfo);
+    void activateAlarm();
     void alarmSound();
 
     void alarmOff();
@@ -97,19 +98,23 @@ AlarmFunction::AlarmFunction(int buzzerPin){
     }
 }
 
-// Timer ISR: If time == alarm time, ring
-void AlarmFunction::activateAlarm(struct tm timeinfo){  
-  // if hr, min, and date line up, playback ring
+bool AlarmFunction::checkAlarmTime(struct tm timeinfo){
   if(timeinfo.tm_min == ringMin && timeinfo.tm_hour == ringHr && alarmDays[timeinfo.tm_wday] == 1 && alarmSet == 1){
-    // ring that homie
-
+    // if hr, min, and date line up, playback ring
     #ifdef SERIAL_DEBUGGING
-    Serial.println("Ringing the alarm");
+    Serial.println("Time for the alarm");
     #endif
-    
+    return true;
+  } else{
+    return false;
+  }    
+}
+
+// Timer ISR: If time == alarm time, ring
+void AlarmFunction::activateAlarm(){  
     isRinging = true; 
     digitalWrite(BUZZER, HIGH); // May end up taking this out
-  }
+    // Might be worthwhile to start a timer function for ringing?
 }
 
 // ISR: Handles the pattern of buzzing for an active alarm

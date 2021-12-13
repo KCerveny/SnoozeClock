@@ -13,7 +13,6 @@
 
 #include "SimpleTimer.h"
 #include "ESP32_New_TimerInterrupt.h"
-#include "ESP32_New_ISR_Timer.h"
 
 #include "AlarmFunction.h"
 
@@ -44,6 +43,7 @@ struct cl clockLocation;
 
 // Alarm Function variables
 AlarmFunction clockAlarm(BUZZER);
+AlarmFunction* alarms;
 
 // UTP Variables
 const char* ntpServer = "pool.ntp.org";
@@ -97,12 +97,9 @@ volatile bool stateChangeCall = false;
 volatile bool noInteractCall = false;
 volatile bool getWeatherCall = false;
 
-#define NUMBER_ISR_TIMERS         1
-#define HW_TIMER_INTERVAL_MS      1L
 
-ESP32Timer ITimer(1);
-ESP32_ISR_Timer ISR_Timer;
-
+#define TIMER1_INTERVAL_MS  125L
+ESP32Timer ITimer1(1);
 SimpleTimer timer;
 
 // ************************ HELPER FUNCTIONS ******************************
@@ -117,22 +114,6 @@ bool isNight(){
     digitalWrite(onboard, LOW); // It is daytime
     return false;
   }
-}
-
-void updateClockISR(){
-  updateClockCall = true;
-}
-
-void stateChangeISR(){
-  stateChangeCall = true;
-}
-
-void noInteractISR(){
-  noInteractCall = true;
-}
-
-void getWeatherISR(){
-  getWeatherCall = true;
 }
 
 void pressBack() {
@@ -213,25 +194,21 @@ void updateClock() {
   }
 }
 
-
-// ************************************************************************
-
-bool IRAM_ATTR TimerHandler(void * timerNo) { 
-  ISR_Timer.run();
-  return true;
+void checkAlarms(){
+  if(clockAlarm.checkAlarmTime(timeinfo) == true){
+    clockAlarm.activateAlarm();
+  }
 }
 
-
-uint32_t TimerInterval[NUMBER_ISR_TIMERS] = {
-  200000L
-};
-
-typedef void (*irqCallback)  ();
-
-irqCallback irqCallbackFunc[NUMBER_ISR_TIMERS] = {
-  clockAlarm.activateAlarm
-};
-
+// Handles the noise of the alarm buzzer
+// uses hardware ISR so not blocked by long updates/refresh cycle
+bool IRAM_ATTR soundAlarm(void * timerNo){
+  if(clockAlarm.isRinging == true){
+    clockAlarm.alarmSound();
+  }
+  
+  return true;
+}
 
 // ************************************* MAIN DRIVER FUNCTIONS **********************************
 
@@ -289,30 +266,21 @@ void setup() {
   attachInterrupt(digitalPinToInterrupt(rot1), scrollWheel, CHANGE); // Rotary dial lead 1
   attachInterrupt(digitalPinToInterrupt(rot2), scrollWheel, CHANGE); // Rotary dial lead 2
 
+  // SOFTWARE TIMER INTERRUPTS (BLOCKING)
 //  timer.setInterval(125L, clockAlarm.alarmSound); // Handle the alarm buzzing sound
   timer.setInterval(200L, stateChange); // State Change check function
   timer.setInterval(1000L, updateClock); // Check clock time once per second
   timer.setInterval(10000L, noInteract); // If no interactions for 10 seconds, go back to clock (S0)
-//  timer.setInterval(20000L, clockAlarm.activateAlarm); // Each 20 secs, check if alarm needs to ring
+  timer.setInterval(20000L, checkAlarms); // Each 20 secs, check if alarm needs to ring
   timer.setInterval(300000L, getWeather); // Retrieve current weather every 5 mins
 
-  if (ITimer.attachInterruptInterval(HW_TIMER_INTERVAL_MS * 1000, TimerHandler)) {
-    Serial.print(F("Starting ITimer OK, millis() = ")); Serial.println(millis());
-  }
-  else{
-    Serial.println(F("Can't set ITimer. Select another freq. or timer"));
-  }
-
-  // Initialize all timer-based ISRs
-  for (uint16_t i = 0; i < NUMBER_ISR_TIMERS; i++){
-    ISR_Timer.setInterval(TimerInterval[i], irqCallbackFunc[i]); 
-  }
+  // HARDWARE ISR
+  ITimer1.attachInterruptInterval(TIMER1_INTERVAL_MS * 1000, soundAlarm); // Check for alarm sound 125ms, not blocked by other functions
 
   clockDisplay(); // Set first screen to the clock (home) screen
 
 }
 
 void loop() {
-  timer.run(); // Handle software interrupts
-  
+  timer.run(); // Handle software interrupts  
 }
