@@ -13,13 +13,6 @@
 #include "SimpleTimer.h"
 #include "ESP32_New_TimerInterrupt.h"
 
-#include "esp_log.h"
-
-#ifdef CONFIG_LOG_DEFAULT_LEVEL
-#undef CONFIG_LOG_DEFAULT_LEVEL
-#define CONFIG_LOG_DEFAULT_LEVEL 5
-#endif
-
 #include "AlarmFunction.h"
 
 // GPIO Pins
@@ -109,12 +102,10 @@ bool checkIsNight(){
   long epochTime = mktime(&timeinfo);
   if((sunset < epochTime) || (sunrise > epochTime)){
      digitalWrite(onboard, HIGH);
-     isNight = true;
      return true;
   }
   else{
     digitalWrite(onboard, LOW); // It is daytime
-    isNight = false;
     return false;
   }
 }
@@ -122,7 +113,7 @@ bool checkIsNight(){
 void pressBack() {
   interacted = true;
   backChange = true; // Mark pin value changed
-//  if(isNight()) digitalWrite(nightLight, HIGH);
+  if(isNight) digitalWrite(nightLight, HIGH);
 }
 
 // Confirm switch is connected to rotary encoder
@@ -174,8 +165,6 @@ void noInteract() {
   if (interacted == false && currentState != 0) {
     currentState = 0; // Adjust FSM for UI purposes
     nextState = 0;
-    Serial.print("No Interaction: back to State 0");
-    Serial.println(nextState);
     digitalWrite(nightLight, LOW); // Turn off light if not touched
     clockDisplay();
   }
@@ -189,8 +178,11 @@ void updateClock() {
     Serial.println("Failed to obtain time");
     return;
   }
-  if (checkIsNight() == true){
-    // Change the system colors to night mode
+  // Check wether time of day has changed
+  bool timeODay = checkIsNight(); // 1 if night, 0 if day
+  if (timeODay != isNight){
+    setColorMode(timeODay); // Set 0 (false) if day, 1 if night
+    isNight = timeODay; // change variable for night if different
   }
   
   if (timeinfo.tm_min != minutes && currentState == 0) {
@@ -219,10 +211,9 @@ bool IRAM_ATTR soundAlarm(void * timerNo){
 
 void setup() {
   Serial.begin(115200);
+  while(!Serial);
 
   initDisplay();
-
-  esp_log_level_set("*", ESP_LOG_VERBOSE);
 
 //  wifiProvision();
   getWifi.ssid = ssid; 
@@ -237,6 +228,7 @@ void setup() {
 
   WiFi.mode(WIFI_STA);
   WiFi.begin((getWifi.ssid).c_str(), (getWifi.pass).c_str());
+  WiFi.setAutoReconnect(true); // We will regain connection if it is lost #####################################################################################################
   Serial.println("Connecting to WiFi: " + getWifi.ssid);
   while (WiFi.status() != WL_CONNECTED);
   
@@ -245,6 +237,7 @@ void setup() {
   getLocalTime(&timeinfo); 
   getWeather();
   /* End Location Setup */
+  
   sysBootStatusScreen();
 
   pinMode(inbox, OUTPUT); // Notification light
@@ -281,11 +274,10 @@ void setup() {
   timer.setInterval(20000L, checkAlarms); // Each 20 secs, check if alarm needs to ring
   timer.setInterval(300000L, getWeather); // Retrieve current weather every 5 mins
 
-//  // HARDWARE ISR
+  // HARDWARE ISR
   ITimer1.attachInterruptInterval(TIMER1_INTERVAL_MS * 1000, soundAlarm); // Check for alarm sound 125ms, not blocked by other functions
 
   clockDisplay(); // Set first screen to the clock (home) screen
-
 }
 
 void loop() {
