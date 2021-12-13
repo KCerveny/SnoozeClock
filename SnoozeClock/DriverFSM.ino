@@ -2,9 +2,9 @@
 void stateChange(){
   
   // Button override to turn off alarm
-  if(isRinging){
-    if(backChange && !confirmChange) snooze(); // back button : snooze for n mins
-    if(!backChange && confirmChange) alarmOff(); // confirm: turn off alarm
+  if(clockAlarm.isRinging){
+    if(backChange && !confirmChange) clockAlarm.snooze(timeinfo); // back button : snooze for n mins
+    if(!backChange && confirmChange) clockAlarm.alarmOff(); // confirm: turn off alarm
     
     backChange = false; 
     confirmChange = false; 
@@ -34,7 +34,6 @@ void stateChange(){
 
       digitalWrite(inbox, LOW); // Messages seen
 //      digitalWrite(onboard, LOW);
-      led1.off(); 
       
       if(backChange && !confirmChange){
         nextState = 0; // Clock screen
@@ -68,7 +67,7 @@ void stateChange(){
     case 3: // Alarm Enable Screen
       // Rotary dial turns alarm on/off
       if(abs(scrollChange)%2 != 0){
-        alarmSet ^= 1; // If scroll is odd, alarm state switches
+        clockAlarm.toggleAlarm(); // If scroll is odd, alarm state switches
       }
       
       if(backChange && !confirmChange){
@@ -84,7 +83,7 @@ void stateChange(){
 
     case 4: // Hour Set Function
       // Rotary selection
-      setAlarmHour();
+      clockAlarm.setAlarmHour(scrollChange);
       
       if(backChange && !confirmChange){
         nextState = 3; // Return to Enable      
@@ -95,7 +94,7 @@ void stateChange(){
       break; 
 
     case 5: // Minute Set Function
-      setAlarmMin();
+      clockAlarm.setAlarmMin(scrollChange);
       
       if(backChange && !confirmChange){
         nextState = 4; // back to set hours 
@@ -106,7 +105,7 @@ void stateChange(){
       break; 
 
     case 6: // AMPM Function
-      setAlarmAMPM();
+      clockAlarm.setAlarmAMPM(scrollChange);
       
       if(backChange && !confirmChange){
         nextState = 5; // Back to set minutes
@@ -117,14 +116,14 @@ void stateChange(){
       break; 
 
     case 7: // Alarm Schedule Function
-      setAlarmSchedule();
+      clockAlarm.setAlarmSchedule(scrollChange);
 
       if(backChange && !confirmChange){
         nextState = 6; // Back to AMPM
       }
       if(!backChange && confirmChange){
         nextState = 0; // back to home screen
-        Blynk.virtualWrite(V6, alarmHr, alarmMin); // Save values to the blynk Server 
+//        Blynk.virtualWrite(V6, clockAlarm.getAlarmHour(), clockAlarm.getAlarmMin() ); // Save values to the blynk Server 
         // TODO: Update ring hours and mins
         clockDisplay(); 
       }

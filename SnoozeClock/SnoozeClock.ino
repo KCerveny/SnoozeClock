@@ -1,16 +1,21 @@
-// #define BLYNK_PRINT Serial /* TODO: delete this line to increase processing */
 #define SERIAL_DEBUGGING
-#define BLYNK_HEARTBEAT 30
+#define TIMER_INTERRUPT_DEBUG         4
+#define _TIMERINTERRUPT_LOGLEVEL_     0
+
 #include <HTTPClient.h>
 #include <WiFi.h>
 #include <WiFiClient.h>
 
 #include <Arduino_JSON.h>
-#include <BlynkSimpleEsp32.h>
 #include "time.h"
 #include <Preferences.h>
 #include <WiFiMulti.h>
 
+#include "SimpleTimer.h"
+#include "ESP32_New_TimerInterrupt.h"
+#include "ESP32_New_ISR_Timer.h"
+
+#include "AlarmFunction.h"
 
 // GPIO Pins
 #define nightLight 35 // night LED to light screen
@@ -37,6 +42,9 @@ typedef struct cl{
 
 struct cl clockLocation; 
 
+// Alarm Function variables
+AlarmFunction clockAlarm(BUZZER);
+
 // UTP Variables
 const char* ntpServer = "pool.ntp.org";
 long  cstOffset_sec; // time zone
@@ -57,22 +65,6 @@ bool seenAlert = false;
 long sunrise; 
 long sunset; 
 
-// Alarm Variables
-TaskHandle_t Task1; // freeRTOS task kernel variable
-
-/* Used for setting alarm values */
-bool alarmSet = 1; // 1=true, 0=false (We use 1,0 to store in Blynk virtual pin)
-int alarmHr = 12;  // Hr and Min saved to servers on V6
-int alarmMin = 49;
-int alarmAMPM = 0; // 0=AM, 1=PM
-int alarmSchedule = 0; // 0: 7day, 1: wkdy, 2: wknd
-
-/* Used for ringing alarm */
-int ringMin; // Used to actually ring the alarm, in case snoozed
-int ringHr;
-bool alarmDays[7] = {1, 1, 1, 1, 1, 1, 1}; // Index represents days since Sunday
-volatile bool isRinging; // FSM button override
-
 // Connectivity Credentials
 Preferences preferences;
 char auth[] = "HVMVCQ6T1ie1ER0uix-iNEZelEf7N82z"; // You should get Auth Token in the Blynk App.
@@ -83,24 +75,11 @@ struct wf{
   String ssid;
   String pass; 
 };
-
 struct wf getWifi;
 
 // Messages Variables
 #define MAX_MESSAGES 10
 String messages[MAX_MESSAGES]; // Keep Track of all messages sent
-
-/* Virtual Connections/Pins
-    V0:
-    V1: Terminal Input (Smartphone)
-    V2: Notification LED
-    V3:
-    V5:
-    V6: {AlarmHr, AlarmMin, alarmDays[0:6], alarmSet}
-    V7: Sent messages storage
-*/
-WidgetTerminal terminal(V1); // Attach virtual serial terminal to Virtual Pin V1
-WidgetLED led1(V2); // Notification LED in Blynk app
 
 // FSM Variables
 volatile short currentState; // TODO: This may actually be better as a virtual pin, to sync with Blynk servers!
@@ -113,13 +92,47 @@ volatile bool interacted = false;
 volatile int rotState; // State:(rot1,rot2) {0:00},{1:01},{2:10},{3:11}
 volatile int scrollChange = 0; // Zero is no scroll, negative scroll up/back, positive scroll down/forward 
 
-BlynkTimer timer;
+volatile bool updateClockCall = false;
+volatile bool stateChangeCall = false;
+volatile bool noInteractCall = false;
+volatile bool getWeatherCall = false;
+
+#define NUMBER_ISR_TIMERS         1
+#define HW_TIMER_INTERVAL_MS      1L
+
+ESP32Timer ITimer(1);
+ESP32_ISR_Timer ISR_Timer;
+
+SimpleTimer timer;
 
 // ************************ HELPER FUNCTIONS ******************************
 
-// Sync device state with server
-BLYNK_CONNECTED() {
-  Blynk.syncVirtual(V2,V6, V7);
+bool isNight(){
+  long epochTime = mktime(&timeinfo);
+  if((sunset < epochTime) || (sunrise > epochTime)){
+     digitalWrite(onboard, HIGH); 
+     return true;
+  }
+  else{
+    digitalWrite(onboard, LOW); // It is daytime
+    return false;
+  }
+}
+
+void updateClockISR(){
+  updateClockCall = true;
+}
+
+void stateChangeISR(){
+  stateChangeCall = true;
+}
+
+void noInteractISR(){
+  noInteractCall = true;
+}
+
+void getWeatherISR(){
+  getWeatherCall = true;
 }
 
 void pressBack() {
@@ -169,18 +182,6 @@ void scrollWheel() {
   if(isNight()) digitalWrite(nightLight, HIGH);
 }
 
-bool isNight(){
-  long epochTime = mktime(&timeinfo);
-  if((sunset < epochTime) || (sunrise > epochTime)){
-     digitalWrite(onboard, HIGH); 
-     return true;
-  }
-  else{
-    digitalWrite(onboard, LOW); // It is daytime
-    return false;
-  }
-}
-
 // Timer-called ISR: if no interaction since last call, return to Clock display (St. 0)
 void noInteract() {
   // If no interaction in last 10 seconds, return to clock screen
@@ -212,6 +213,26 @@ void updateClock() {
   }
 }
 
+
+// ************************************************************************
+
+bool IRAM_ATTR TimerHandler(void * timerNo) { 
+  ISR_Timer.run();
+  return true;
+}
+
+
+uint32_t TimerInterval[NUMBER_ISR_TIMERS] = {
+  200000L
+};
+
+typedef void (*irqCallback)  ();
+
+irqCallback irqCallbackFunc[NUMBER_ISR_TIMERS] = {
+  clockAlarm.activateAlarm
+};
+
+
 // ************************************* MAIN DRIVER FUNCTIONS **********************************
 
 void setup() {
@@ -229,10 +250,13 @@ void setup() {
 //  if(clockLocation.foundLoc == false){
 //    getCoords; // Attempt once more before default location
 //  }
+
+  WiFi.mode(WIFI_STA);
+  WiFi.begin((getWifi.ssid).c_str(), (getWifi.pass).c_str());
+  Serial.println("Connecting to WiFi: " + getWifi.ssid);
+  while (WiFi.status() != WL_CONNECTED);
   
-  Blynk.begin(auth, (getWifi.ssid).c_str(), (getWifi.pass).c_str());
   locationStatus();
-  sntp_set_sync_mode(SNTP_SYNC_MODE_SMOOTH); // Smooth readjustment of system time with NTP
   configTime(clockLocation.tzSec, 0, ntpServer); //init and get the time
   getLocalTime(&timeinfo); 
   getWeather();
@@ -255,10 +279,6 @@ void setup() {
   int rotary2 = digitalRead(rot2) ? 1 : 0;
   rotState = 2*rotary1 + rotary2; // Will yield 4 distinct states
 
-  pinMode(BUZZER, OUTPUT); // TESTING LED for alarm function
-  digitalWrite(BUZZER, LOW);
-  ringMin = alarmMin; // Set alarm to ring next at user-set time
-  ringHr = alarmHr;
 
   currentState = 0; // Initialize FSM of clock interface
   nextState = 0;
@@ -269,30 +289,30 @@ void setup() {
   attachInterrupt(digitalPinToInterrupt(rot1), scrollWheel, CHANGE); // Rotary dial lead 1
   attachInterrupt(digitalPinToInterrupt(rot2), scrollWheel, CHANGE); // Rotary dial lead 2
 
-  timer.setInterval(125L, alarmSound); // Handle the alarm buzzing sound
+//  timer.setInterval(125L, clockAlarm.alarmSound); // Handle the alarm buzzing sound
   timer.setInterval(200L, stateChange); // State Change check function
   timer.setInterval(1000L, updateClock); // Check clock time once per second
   timer.setInterval(10000L, noInteract); // If no interactions for 10 seconds, go back to clock (S0)
-  timer.setInterval(20000L, activateAlarm); // Each 20 secs, check if alarm needs to ring
+//  timer.setInterval(20000L, clockAlarm.activateAlarm); // Each 20 secs, check if alarm needs to ring
   timer.setInterval(300000L, getWeather); // Retrieve current weather every 5 mins
 
-  clockDisplay(); // Set first screen to the clock (home) screen
-
-  // This will print Blynk Software version to the Terminal Widget when
-  // your hardware gets connected to Blynk Server
-  terminal.clear();
-  terminal.println(F("Blynk v" BLYNK_VERSION ": Device started"));
-  terminal.println(F("-----------------"));
-  terminal.println(F("Previous Messages: "));
-  for (int b = 0; b < MAX_MESSAGES; b++) {
-    terminal.println(messages[b]);
+  if (ITimer.attachInterruptInterval(HW_TIMER_INTERVAL_MS * 1000, TimerHandler)) {
+    Serial.print(F("Starting ITimer OK, millis() = ")); Serial.println(millis());
   }
-  terminal.println(F("-----------------"));
-  terminal.flush();
+  else{
+    Serial.println(F("Can't set ITimer. Select another freq. or timer"));
+  }
+
+  // Initialize all timer-based ISRs
+  for (uint16_t i = 0; i < NUMBER_ISR_TIMERS; i++){
+    ISR_Timer.setInterval(TimerInterval[i], irqCallbackFunc[i]); 
+  }
+
+  clockDisplay(); // Set first screen to the clock (home) screen
 
 }
 
 void loop() {
-  Blynk.run();
-  timer.run();
+  timer.run(); // Handle software interrupts
+  
 }

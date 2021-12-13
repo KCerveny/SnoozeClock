@@ -60,7 +60,7 @@ void clockDisplay() {
   showWeatherIcon();
 
   // Display notification icons
-  if(alarmSet == 1){
+  if(clockAlarm.getAlarmSetting() == true){
     display.drawBitmap(gridicons_bell, 272, 0, 24, 24, GxEPD_BLACK);
   }
   if(digitalRead(onboard) == HIGH){
@@ -137,7 +137,7 @@ void onOff(){
   display.setFont(&LexendMega_Regular9pt7b);
   display.setCursor(0, 60);
   // make current setting red
-  if(alarmSet == true){
+  if(clockAlarm.getAlarmSetting() == true){
     display.setTextColor(GxEPD_RED);
     display.println("on");
     display.setTextColor(GxEPD_BLACK); 
@@ -158,11 +158,13 @@ void hours(){
   display.setTextColor(GxEPD_BLACK);
   display.fillRect(42,40,58,60, GxEPD_WHITE); 
   display.setCursor(42, 82);
-  if(alarmHr == 12 || alarmHr == 0){
+  int alrmHr = clockAlarm.getAlarmHour();
+  
+  if(alrmHr == 12 || alrmHr == 0){
     display.print(12); 
   }
   else{
-    display.print(alarmHr%12); 
+    display.print(alrmHr%12); 
   }
 }
 
@@ -173,13 +175,14 @@ void mins(){
   display.fillRect(103,40,88,60, GxEPD_WHITE); 
   display.setCursor(103, 82);
   display.print(":"); 
-  display.print(alarmMin); 
+  display.print(clockAlarm.getAlarmMin()); 
 }
 
 // AM/PM Display Helper
 void AMPM(){
   display.setFont(&LexendMega_Regular9pt7b); 
-    
+  int alarmHr = clockAlarm.getAlarmHour();
+  
   if(alarmHr/12 == 1){
     // we are in the PM hours
     display.setTextColor(GxEPD_BLACK);
@@ -207,8 +210,9 @@ void AMPM(){
 void schedule(){
   uint16_t cursorX = 220;
   uint16_t cursorY;
-  display.setFont(&LexendMega_Regular9pt7b); 
-  if(alarmDays[0] == 1 && alarmDays[1] == 1){
+  display.setFont(&LexendMega_Regular9pt7b);
+  bool* alarmDays = clockAlarm.getAlarmSchedule();
+  if(alarmDays[0] == true && alarmDays[1] == true){
     // Both sunday and monday alarms set, we know it must be "7day"
     display.setTextColor(GxEPD_RED);
     cursorX = display.getCursorX(); 
@@ -222,7 +226,7 @@ void schedule(){
     display.setCursor(cursorX+10, cursorY);
     display.print("wknd");
   }
-  else if(alarmDays[0] == 0 && alarmDays[1] == 1){
+  else if(alarmDays[0] == false && alarmDays[1] == true){
     // Sunday off, Monday on, must then be "wkdy"
     display.setTextColor(GxEPD_BLACK);
     cursorX = display.getCursorX(); 

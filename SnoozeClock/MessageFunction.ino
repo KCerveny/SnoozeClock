@@ -1,17 +1,17 @@
 // Process all functions related to sending, receiving, and processing messages
 
 // Process message from terminal in Blynk App
-BLYNK_WRITE(V1){
-  digitalWrite(inbox, HIGH); // Turn on the indicator lights (unread message)
-//  digitalWrite(onboard, HIGH);
-  led1.on(); 
-
-  addMessage(param.asStr()); // Add message to messages array
-  
-  if(currentState == 1){
-    messagesOverview(); // Auto-refresh if on messages page
-  }
-}
+//BLYNK_WRITE(V1){
+//  digitalWrite(inbox, HIGH); // Turn on the indicator lights (unread message)
+////  digitalWrite(onboard, HIGH);
+//  led1.on(); 
+//
+//  addMessage(param.asStr()); // Add message to messages array
+//  
+//  if(currentState == 1){
+//    messagesOverview(); // Auto-refresh if on messages page
+//  }
+//}
 
 // push new message to the front of the array
 // shift back rest of array, losing oldest message
@@ -27,7 +27,7 @@ void addMessage(String newOne) {
   }
 
   // Store new messages structure to the Blynk server
-  Blynk.virtualWrite(V7, messages[0], messages[1], messages[2], messages[3], messages[4], messages[5], messages[6], messages[7], messages[8], messages[9]); 
+//  Blynk.virtualWrite(V7, messages[0], messages[1], messages[2], messages[3], messages[4], messages[5], messages[6], messages[7], messages[8], messages[9]); 
 }
 
 // Message Response
