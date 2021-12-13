@@ -5,7 +5,6 @@
 #include <HTTPClient.h>
 #include <WiFi.h>
 #include <WiFiClient.h>
-
 #include <Arduino_JSON.h>
 #include "time.h"
 #include <Preferences.h>
@@ -13,6 +12,13 @@
 
 #include "SimpleTimer.h"
 #include "ESP32_New_TimerInterrupt.h"
+
+#include "esp_log.h"
+
+#ifdef CONFIG_LOG_DEFAULT_LEVEL
+#undef CONFIG_LOG_DEFAULT_LEVEL
+#define CONFIG_LOG_DEFAULT_LEVEL 5
+#endif
 
 #include "AlarmFunction.h"
 
@@ -91,12 +97,7 @@ volatile bool confirmChange = false;
 volatile bool interacted = false;
 volatile int rotState; // State:(rot1,rot2) {0:00},{1:01},{2:10},{3:11}
 volatile int scrollChange = 0; // Zero is no scroll, negative scroll up/back, positive scroll down/forward 
-
-volatile bool updateClockCall = false;
-volatile bool stateChangeCall = false;
-volatile bool noInteractCall = false;
-volatile bool getWeatherCall = false;
-
+volatile bool isNight = false;
 
 #define TIMER1_INTERVAL_MS  125L
 ESP32Timer ITimer1(1);
@@ -104,14 +105,16 @@ SimpleTimer timer;
 
 // ************************ HELPER FUNCTIONS ******************************
 
-bool isNight(){
+bool checkIsNight(){
   long epochTime = mktime(&timeinfo);
   if((sunset < epochTime) || (sunrise > epochTime)){
-     digitalWrite(onboard, HIGH); 
+     digitalWrite(onboard, HIGH);
+     isNight = true;
      return true;
   }
   else{
     digitalWrite(onboard, LOW); // It is daytime
+    isNight = false;
     return false;
   }
 }
@@ -119,14 +122,16 @@ bool isNight(){
 void pressBack() {
   interacted = true;
   backChange = true; // Mark pin value changed
-  if(isNight()) digitalWrite(nightLight, HIGH);
+//  if(isNight()) digitalWrite(nightLight, HIGH);
 }
 
 // Confirm switch is connected to rotary encoder
 void pressConfirm() {
   interacted = true;
   confirmChange = true; // Mark pin value changed
-  if(isNight()) digitalWrite(nightLight, HIGH);
+  if(isNight){
+    digitalWrite(nightLight, HIGH);
+  }
 }
 
 void scrollWheel() {
@@ -160,7 +165,7 @@ void scrollWheel() {
   }
   
   rotState = newState; // scrollChange has been adjusted, state updates  
-  if(isNight()) digitalWrite(nightLight, HIGH);
+  if(isNight) digitalWrite(nightLight, HIGH);
 }
 
 // Timer-called ISR: if no interaction since last call, return to Clock display (St. 0)
@@ -184,7 +189,7 @@ void updateClock() {
     Serial.println("Failed to obtain time");
     return;
   }
-  if (isNight()){
+  if (checkIsNight() == true){
     // Change the system colors to night mode
   }
   
@@ -200,7 +205,7 @@ void checkAlarms(){
   }
 }
 
-// Handles the noise of the alarm buzzer
+//// Handles the noise of the alarm buzzer
 // uses hardware ISR so not blocked by long updates/refresh cycle
 bool IRAM_ATTR soundAlarm(void * timerNo){
   if(clockAlarm.isRinging == true){
@@ -216,6 +221,8 @@ void setup() {
   Serial.begin(115200);
 
   initDisplay();
+
+  esp_log_level_set("*", ESP_LOG_VERBOSE);
 
 //  wifiProvision();
   getWifi.ssid = ssid; 
@@ -274,7 +281,7 @@ void setup() {
   timer.setInterval(20000L, checkAlarms); // Each 20 secs, check if alarm needs to ring
   timer.setInterval(300000L, getWeather); // Retrieve current weather every 5 mins
 
-  // HARDWARE ISR
+//  // HARDWARE ISR
   ITimer1.attachInterruptInterval(TIMER1_INTERVAL_MS * 1000, soundAlarm); // Check for alarm sound 125ms, not blocked by other functions
 
   clockDisplay(); // Set first screen to the clock (home) screen
